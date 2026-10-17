@@ -22,6 +22,19 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, filedialog
 
+# Single-Instance Enforcement to prevent duplicate processes & PyInstaller _MEI collisions
+ERROR_ALREADY_EXISTS = 183
+try:
+    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v25")
+    if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+        hwnd = ctypes.windll.user32.FindWindowW(None, "Spider-Man: Web of Shadows — ReComp Modern Edition")
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        sys.exit(0)
+except Exception:
+    pass
+
 # Enable Per-Monitor High-DPI awareness and Taskbar Icon ID on Windows
 try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v25")
@@ -1023,12 +1036,18 @@ class ModernWoSLauncherV25:
             rel_log = os.path.relpath(latest_log, exe.parent)
         except Exception:
             rel_log = str(latest_log)
+        creationflags = 0
+        if sys.platform == "win32":
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
         subprocess.Popen(
             [str(exe), f"--log_file={rel_log}"],
             cwd=str(exe.parent),
             env=env,
+            creationflags=creationflags,
+            close_fds=True,
         )
         self.root.destroy()
+        sys.exit(0)
 
 
 if __name__ == "__main__":
