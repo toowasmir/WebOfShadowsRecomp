@@ -1,0 +1,8 @@
+{
+  "resolution": "1280x720",
+  "fullscreen": false,
+  "vsync": false,
+  "resolution_scale": 1,
+  "present_effect": "bilinear",
+  "mnk_mouse": true
+}
