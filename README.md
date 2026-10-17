@@ -17,7 +17,7 @@
 
 ![Windows x64](https://img.shields.io/badge/Windows-x64%20(AVX2%20%2B%20FMA3)-0078D6?logo=windows&logoColor=white)
 ![Direct3D 12](https://img.shields.io/badge/Direct3D-12%20(ROV)-5E5E5E)
-![AMD FidelityFX](https://img.shields.io/badge/AMD%20FidelityFX-FSR%203%20%2B%202x%20FrameGen-ED1C24?logo=amd&logoColor=white)
+
 
 ### [Download Latest Release](https://github.com/toowasmir/WebOfShadowsRecomp/releases/latest) · [How to Install](#how-to-install) · [Features](#features) · [Controls](#controls) · [Report an Issue](https://github.com/toowasmir/WebOfShadowsRecomp/issues)
 
