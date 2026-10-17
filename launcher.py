@@ -46,6 +46,7 @@ else:
 CONFIG_FILE = BASE_DIR / "recomp_config.json"
 STATS_FILE = BASE_DIR / "last_session_stats.json"
 SAVES_BACKUP_DIR = BASE_DIR / "saves_backup"
+LOGS_DIR = BASE_DIR / "logs"
 
 BG_DARK = "#07080c"
 GLASS_HEADER = "#0d0f16"
@@ -165,7 +166,10 @@ STRINGS = {
         "btn_backup": "➕ Kayıt Yedeği Al",
         "btn_restore": "♻ Son Yedeği Yükle",
         "btn_folder": "📂 Klasörü Aç",
-        "sec_perf": "GERÇEK ZAMANLI OTURUM & TELEMETRİ RAPORU",
+        "sec_perf": "GERÇEK ZAMANLI OTURUM, TELEMETRİ & HATA RAPORU (LOG)",
+        "btn_open_log": "📄 Son Logu Aç",
+        "btn_export_diag": "📦 Hata Raporu (.ZIP) Oluştur",
+        "btn_logs_folder": "📂 Log Klasörü",
     },
     "en": {
         "nav": [
@@ -215,7 +219,10 @@ STRINGS = {
         "btn_backup": "➕ Backup Save Now",
         "btn_restore": "♻ Restore Latest",
         "btn_folder": "📂 Open Folder",
-        "sec_perf": "REAL-TIME SESSION & TELEMETRY REPORT",
+        "sec_perf": "REAL-TIME SESSION, TELEMETRY & CRASH LOGS",
+        "btn_open_log": "📄 Open Latest Log",
+        "btn_export_diag": "📦 Export Bug Report (.ZIP)",
+        "btn_logs_folder": "📂 Logs Folder",
     },
 }
 
@@ -772,22 +779,40 @@ class ModernWoSLauncherV25:
         up = stats_data.get("upscaler", self.config.get("present_effect", "fsr3").upper())
 
         # Hero Metric Card
-        self.canvas.create_rectangle(126, 174, 594, 266, fill=CARD_FILL, outline=t["accent"])
-        self.canvas.create_text(146, 190, text=f"{fg_fps} FG FPS", font=("Segoe UI", 26, "bold"), fill=GREEN_OK, anchor="nw")
-        self.canvas.create_text(146, 234, text=f"Zirve (Peak): {peak_fps} FPS   •   Native: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_rectangle(126, 168, 594, 248, fill=CARD_FILL, outline=t["accent"])
+        self.canvas.create_text(146, 180, text=f"{fg_fps} FG FPS", font=("Segoe UI", 24, "bold"), fill=GREEN_OK, anchor="nw")
+        self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} FPS   •   Native: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         rows = [
             ("Aktif AMD FidelityFX Motoru", f"AMD {up} ({self.config.get('fsr_quality_mode', 'quality').upper()})"),
             ("Dahili 2x Frame Generation", "AÇIK (2x QPC Pacer)" if self.config.get("frame_generation", True) else "KAPALI"),
             ("İşlemci (CPU) Kullanımı", f"%{cpu_pct}  (AVX2 + FMA3 + FTZ/DAZ)"),
             ("VRAM Önbellek Profili", f"{self.config.get('vram_profile', '4gb').upper()}  (ROV + Occlusion Culling)"),
-            ("Oyun İçi Canlı FrameGen Kısayolu", "[F4] Tuşu ile Anlık Aç / Kapat"),
         ]
         for i, (k, v) in enumerate(rows):
-            y = 284 + i * 46
-            self.canvas.create_rectangle(126, y, 594, y + 38, fill=CARD_FILL, outline=BORDER_SUBTLE)
-            self.canvas.create_text(142, y + 19, text=k, font=("Segoe UI", 9), fill=TEXT_MUTED, anchor="w")
-            self.canvas.create_text(578, y + 19, text=v, font=("Segoe UI", 9, "bold"), fill=TEXT_WHITE, anchor="e")
+            y = 260 + i * 42
+            self.canvas.create_rectangle(126, y, 594, y + 36, fill=CARD_FILL, outline=BORDER_SUBTLE)
+            self.canvas.create_text(142, y + 18, text=k, font=("Segoe UI", 9), fill=TEXT_MUTED, anchor="w")
+            self.canvas.create_text(578, y + 18, text=v, font=("Segoe UI", 9, "bold"), fill=TEXT_WHITE, anchor="e")
+
+        # Crash & Session Log Diagnostic Card
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        latest_log = LOGS_DIR / "wos_recomp_latest.log"
+        log_logs = sorted(LOGS_DIR.glob("wos_session_*.log"), reverse=True)
+        if latest_log.exists():
+            kb = round(latest_log.stat().st_size / 1024, 1)
+            log_status = f"✔ Otomatik Log Aktif: logs/wos_recomp_latest.log ({kb} KB)"
+        elif log_logs:
+            kb = round(log_logs[0].stat().st_size / 1024, 1)
+            log_status = f"✔ Son Oturum Logu: {log_logs[0].name} ({kb} KB)"
+        else:
+            log_status = "ℹ Oyun başlatıldığında tüm motor/çökme kayıtları 'logs/' klasörüne yazılır."
+
+        self.canvas.create_rectangle(126, 434, 594, 532, fill=CARD_FILL, outline=BORDER_SUBTLE)
+        self.canvas.create_text(142, 448, text=log_status, font=("Segoe UI", 8, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.draw_pill(142, 478, 128, 38, s["btn_open_log"], False, self.open_latest_log)
+        self.draw_pill(278, 478, 174, 38, s["btn_export_diag"], True, self.export_bug_report)
+        self.draw_pill(460, 478, 118, 38, s["btn_logs_folder"], False, lambda: os.startfile(str(LOGS_DIR)))
 
     # -------------------------------------------------------------------------
     # ACTIONS
@@ -823,7 +848,7 @@ class ModernWoSLauncherV25:
                 "anisotropic_override": 3,
                 "occlusion_query_enable": True,
             })
-            self.status_msg = "✔ 1080p Native AA Profili Uygulandı"
+            self.status_msg = "✔ Dengeli (1080p) Profili Uygulandı"
         elif preset == "ultra":
             self.config.update({
                 "resolution": "2560x1440",
@@ -836,7 +861,7 @@ class ModernWoSLauncherV25:
                 "anisotropic_override": 5,
                 "occlusion_query_enable": True,
             })
-            self.status_msg = "✔ 2K Ultra Supersample Profili Uygulandı"
+            self.status_msg = "✔ Ultra Kalite (2K) Profili Uygulandı"
         self.save_config()
         self.render()
 
@@ -903,6 +928,55 @@ class ModernWoSLauncherV25:
         self.status_msg = "✔ Son yedek geri yüklendi!"
         self.render()
 
+    def open_latest_log(self):
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        latest = LOGS_DIR / "wos_recomp_latest.log"
+        if not latest.exists():
+            logs = sorted(LOGS_DIR.glob("*.log"), reverse=True)
+            if logs:
+                latest = logs[0]
+            else:
+                messagebox.showinfo(
+                    "Log Bulunamadı" if self.lang == "tr" else "No Log Found",
+                    "Henüz oluşturulmuş bir oyun log dosyası yok. Oyunu en az bir kez başlattığınızda otomatik oluşturulur."
+                    if self.lang == "tr"
+                    else "No session log found yet. Start the game once to generate logs/wos_recomp_latest.log.",
+                )
+                return
+        os.startfile(str(latest))
+
+    def export_bug_report(self):
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        diag_zip = LOGS_DIR / f"WoS_BugReport_{stamp}.zip"
+        with zipfile.ZipFile(diag_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            if CONFIG_FILE.exists():
+                zf.write(CONFIG_FILE, arcname="recomp_config.json")
+            for st_cand in [STATS_FILE, BASE_DIR / "bin" / "last_session_stats.json"]:
+                if st_cand.exists():
+                    zf.write(st_cand, arcname="last_session_stats.json")
+                    break
+            for lf in sorted(LOGS_DIR.glob("*.log"), reverse=True)[:5]:
+                zf.write(lf, arcname=f"logs/{lf.name}")
+            # Include basic OS/CPU/GPU diagnostic summary
+            sys_info = [
+                f"Timestamp: {datetime.now().isoformat()}",
+                f"Platform: {sys.platform}",
+                f"Game Ready: {self.is_game_ready()}",
+                f"Engine Path: {self.find_exe_path()}",
+                f"Game Dir: {self.find_game_dir()}",
+            ]
+            zf.writestr("system_summary.txt", "\n".join(sys_info))
+        self.status_msg = f"✔ Hata Raporu Hazır: logs/{diag_zip.name}"
+        self.render()
+        messagebox.showinfo(
+            "Hata Raporu Oluşturuldu" if self.lang == "tr" else "Bug Report Created",
+            f"GitHub Issues'a yükleyebileceğiniz hata raporu paketi oluşturuldu:\n\n{diag_zip}"
+            if self.lang == "tr"
+            else f"Diagnostic archive ready to attach to GitHub Issues:\n\n{diag_zip}",
+        )
+        os.startfile(str(LOGS_DIR))
+
     def launch_game(self):
         self.save_config()
         exe = self.find_exe_path()
@@ -913,10 +987,42 @@ class ModernWoSLauncherV25:
             self.switch_tab(4)
             messagebox.showwarning("Kurulum Gerekli", "Lütfen önce .ISO dosyasından oyun dosyalarını çıkartın.")
             return
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        # Keep only the 10 most recent timestamped session logs
+        old_logs = sorted(LOGS_DIR.glob("wos_session_*.log"), reverse=True)
+        for old_f in old_logs[9:]:
+            try:
+                old_f.unlink()
+            except Exception:
+                pass
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        latest_log = LOGS_DIR / "wos_recomp_latest.log"
+        session_log = LOGS_DIR / f"wos_session_{stamp}.log"
+        # Archive previous latest log if present
+        if latest_log.exists():
+            try:
+                prev_stamp = datetime.fromtimestamp(latest_log.stat().st_mtime).strftime("%Y%m%d_%H%M%S")
+                prev_dest = LOGS_DIR / f"wos_session_{prev_stamp}.log"
+                if not prev_dest.exists():
+                    latest_log.replace(prev_dest)
+            except Exception:
+                pass
         env = os.environ.copy()
         env["WOS_AUTOSKIP"] = "0"
         env["WOS_CAPTURE_TEST"] = "0"
-        subprocess.Popen([str(exe)], cwd=str(exe.parent), env=env)
+        log_fh = open(latest_log, "w", encoding="utf-8", buffering=1)
+        log_fh.write(f"=== Spider-Man: Web of Shadows Recompiled — Session Log ({stamp}) ===\n")
+        log_fh.write(f"Executable: {exe}\n")
+        log_fh.write(f"Config: {json.dumps(self.config, ensure_ascii=False)}\n")
+        log_fh.write("=" * 72 + "\n\n")
+        log_fh.flush()
+        subprocess.Popen(
+            [str(exe)],
+            cwd=str(exe.parent),
+            env=env,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+        )
         self.root.destroy()
 
 

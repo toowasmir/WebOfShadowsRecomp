@@ -134,6 +134,18 @@ To modify the engine hooks (`src/hooks/`) or rebuild `wos_recomp.exe` from sourc
    pyinstaller --noconfirm --onefile --windowed --icon="assets/wos_icon.ico" --add-data "assets;assets" --distpath "." --name "WoS_Launcher" launcher.py
    ```
 
+## Reporting a Problem & Crash Logs
+
+Every time the game is launched via **`WoS_Launcher.exe`** or **`Play_WoS.bat`**, the engine automatically records a full diagnostic log (including Direct3D 12 initialization, CVAR states, AMD FSR 3 / FrameGen telemetry, and our built-in Vectored Exception Handler `[WoS-CRASH]` stack trace in case of an access violation) into the **`logs/`** directory:
+
+- **Latest Session Log:** `logs/wos_recomp_latest.log`
+- **Previous Sessions (Up to 10 kept automatically):** `logs/wos_session_YYYYMMDD_HHMMSS.log`
+
+**How to attach logs to a GitHub Issue:**
+1. Open **`WoS_Launcher.exe`** and click the **📊 Stats (`Analiz`)** tab on the left navigation rail.
+2. Click **📦 Export Bug Report (`.ZIP`)** (`Hata Raporu (.ZIP) Oluştur`).
+3. This creates `logs/WoS_BugReport_<timestamp>.zip` containing your latest logs, `recomp_config.json`, and `last_session_stats.json` (with zero personal/save data), which you can drag and drop directly into a [GitHub Issue](https://github.com/toowasmir/WebOfShadowsRecomp/issues).
+
 ## Project Layout
 
 ```text
@@ -149,6 +161,7 @@ WebOfShadowsRecomp/
 │   ├── rexruntime.dll        # ReXGlue Xbox 360 kernel, audio & input runtime
 │   └── rexgpu-xenos.dll      # Direct3D 12 Xenos GPU & shader presenter
 ├── game/                     # Extract your Xbox 360 ISO files (default.xex) here
+├── logs/                     # Automatic session & crash logs (wos_recomp_latest.log)
 ├── patches/                  # Zero-stall MXCSR & AVX2/SSSE3 intrinsic patches
 ├── src/
 │   ├── main.cpp              # Engine entry point, config loader & D3D12 CVAR bridge
