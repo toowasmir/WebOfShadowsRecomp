@@ -932,10 +932,13 @@ class ModernWoSLauncherV25:
     def open_latest_log(self):
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         latest = LOGS_DIR / "wos_recomp_latest.log"
-        if not latest.exists():
-            logs = sorted(LOGS_DIR.glob("*.log"), reverse=True)
-            if logs:
-                latest = logs[0]
+        if not latest.exists() or latest.stat().st_size == 0:
+            candidates = sorted(LOGS_DIR.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+            bin_logs_dir = BASE_DIR / "bin" / "logs"
+            if bin_logs_dir.exists():
+                candidates.extend(sorted(bin_logs_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True))
+            if candidates:
+                latest = candidates[0]
             else:
                 messagebox.showinfo(
                     "Log Bulunamadı" if self.lang == "tr" else "No Log Found",
@@ -957,7 +960,11 @@ class ModernWoSLauncherV25:
                 if st_cand.exists():
                     zf.write(st_cand, arcname="last_session_stats.json")
                     break
-            for lf in sorted(LOGS_DIR.glob("*.log"), reverse=True)[:5]:
+            all_logs = sorted(LOGS_DIR.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+            bin_logs_dir = BASE_DIR / "bin" / "logs"
+            if bin_logs_dir.exists():
+                all_logs.extend(sorted(bin_logs_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True))
+            for lf in all_logs[:5]:
                 zf.write(lf, arcname=f"logs/{lf.name}")
             # Include basic OS/CPU/GPU diagnostic summary
             sys_info = [
@@ -1011,8 +1018,13 @@ class ModernWoSLauncherV25:
         env = os.environ.copy()
         env["WOS_AUTOSKIP"] = "0"
         env["WOS_CAPTURE_TEST"] = "0"
+        # Determine relative path from exe.parent to latest_log (immune to path spaces & non-ASCII folder names)
+        try:
+            rel_log = os.path.relpath(latest_log, exe.parent)
+        except Exception:
+            rel_log = str(latest_log)
         subprocess.Popen(
-            [str(exe), f"--log_file={str(latest_log)}"],
+            [str(exe), f"--log_file={rel_log}"],
             cwd=str(exe.parent),
             env=env,
         )
