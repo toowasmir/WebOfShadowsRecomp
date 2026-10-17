@@ -1,11 +1,11 @@
-// wos_recomp - Built-in AMD FidelityFX (FSR 1/2/3 + CAS) & Frame Generation Engine
+// wos_recomp - Built-in AMD FidelityFX (FSR + CAS) & High-Precision 2x Frame Pacer
 //
 // Spider-Man: Web of Shadows (Xbox 360 -> Win64 Static Recompilation)
 //
 // Provides:
 // 1. Zero-dependency JSON configuration loader (recomp_config.json)
-// 2. Direct ReXGlue CVAR + Presenter::GuestOutputPaintConfig binding for AMD FSR 1/2/3 & CAS
-// 3. High-resolution QPC + WaitableTimer Frame Pacer & 2x Frame Generation Scheduler
+// 2. Direct ReXGlue CVAR + Presenter binding for AMD FidelityFX (FSR + RCAS & CAS)
+// 3. High-resolution QPC + WaitableTimer 2x Frame Pacer & Display Cadence Doubler
 // 4. Session telemetry export (last_session_stats.json) for the Modern Launcher
 
 #pragma once
@@ -39,14 +39,14 @@ struct ModernConfig {
   bool dither = true;
 
   // AMD FidelityFX Upscaler & Sharpening
-  std::string present_effect = "fsr3";           // bilinear, cas, fsr, fsr2, fsr3
+  std::string present_effect = "fsr";            // bilinear, cas, fsr (AMD FSR 1.0 + RCAS)
   std::string fsr_quality_mode = "quality";      // auto, nativeaa, quality, balanced, performance, ultraperformance
   double fsr_sharpness = 0.2;                    // 0.0 (sharpest) .. 2.0 (softest) in FSR RCAS attenuation
   double cas_sharpness = 0.5;                    // 0.0 .. 1.0
   int fsr_max_passes = 2;
 
-  // Built-in Frame Generation & Frame Pacing
-  bool frame_generation = true;                  // 2x Frame Generation
+  // Built-in 2x Frame Pacer & Display Cadence Doubler
+  bool frame_generation = true;                  // 2x Display Cadence Pacer
   int fg_multiplier = 2;                         // 2x
   int frame_limit = 60;                          // 0 = unlimited, 30, 40, 60, 120
 
@@ -227,7 +227,7 @@ inline bool LoadConfigFromDisk() {
   detail::ExtractString(json, "keybind_rstick_press", g_config.keybind_rstick_press);
 
   g_fg_enabled.store(g_config.frame_generation, std::memory_order_relaxed);
-  REXLOG_INFO("[WoS-FG] Loaded recomp_config.json from '{}': {}x{}, fullscreen={}, effect='{}', fsr_mode='{}', FG={}, limit={}",
+  REXLOG_INFO("[WoS-PACER] Loaded recomp_config.json from '{}': {}x{}, fullscreen={}, effect='{}', fsr_mode='{}', 2xPacer={}, limit={}",
               cfg_path.string(), g_config.window_width, g_config.window_height,
               g_config.fullscreen, g_config.present_effect, g_config.fsr_quality_mode,
               g_config.frame_generation, g_config.frame_limit);
@@ -375,7 +375,7 @@ inline void OnNativeFrameSwap() {
   }
 }
 
-// Starts the dedicated sub-frame AMD FSR Frame Generation & Pacing thread
+// Starts the dedicated sub-frame 2x Frame Pacer thread (doubles presentation cadence to 60/120 Hz)
 inline void StartFrameGenThread(rex::ui::Window* window) {
   if (!window) return;
 
@@ -383,7 +383,7 @@ inline void StartFrameGenThread(rex::ui::Window* window) {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
     HANDLE hTimer = CreateWaitableTimerExW(
         NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
-    REXLOG_INFO("[WoS-FG] AMD FidelityFX Sub-Frame Pacer & 2x Frame Generation thread active");
+    REXLOG_INFO("[WoS-PACER] Built-in 2x Frame Pacer & Display Cadence thread active");
 
     while (true) {
       if (!g_fg_enabled.load(std::memory_order_relaxed)) {
@@ -410,7 +410,7 @@ inline void StartFrameGenThread(rex::ui::Window* window) {
         continue;
       }
 
-      // Target the exact 50% midpoint between native frames for 2x Frame Generation
+      // Target the exact 50% midpoint between native frames for 2x display cadence
       uint64_t midpoint_qpc = last_swap + (interval / 2);
       uint64_t now = GetQpcNow();
       if (now < midpoint_qpc) {
@@ -422,7 +422,7 @@ inline void StartFrameGenThread(rex::ui::Window* window) {
           g_subframe_pending.exchange(false, std::memory_order_acq_rel)) {
         HWND hwnd = static_cast<HWND>(window->GetNativeWindowHandle());
         if (hwnd && IsWindow(hwnd)) {
-          // Trigger intermediate Presenter pass (executes AMD FSR / RCAS pass on D3D12 SwapChain)
+          // Trigger intermediate Presenter pass (refreshes D3D12 SwapChain buffer at midpoint)
           InvalidateRect(hwnd, NULL, FALSE);
           g_fg_frames_this_sec.fetch_add(1, std::memory_order_relaxed);
         }

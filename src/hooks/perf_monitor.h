@@ -71,7 +71,7 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
   wos::fg::StartFrameGenThread(window);
 
   std::thread([window]() {
-    REXLOG_INFO("[WoS-PERF] Performance telemetry thread started (1s update interval, F4 toggles FrameGen)");
+    REXLOG_INFO("[WoS-PERF] Performance telemetry thread started (1s update interval, F4 toggles 2x Frame Pacer)");
     auto last_time = std::chrono::steady_clock::now();
     uint32_t log_counter = 0;
     double sum_native_fps = 0.0;
@@ -87,7 +87,7 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
         if (f4_down && !prev_f4_down) {
           bool new_state = !wos::fg::g_fg_enabled.load(std::memory_order_relaxed);
           wos::fg::g_fg_enabled.store(new_state, std::memory_order_relaxed);
-          REXLOG_INFO("[WoS-FG] Hotkey F4 pressed: Built-in Frame Generation is now {}",
+          REXLOG_INFO("[WoS-PACER] Hotkey F4 pressed: Built-in 2x Frame Pacer is now {}",
                       new_state ? "ENABLED (2x)" : "DISABLED (1x)");
         }
         prev_f4_down = f4_down;
@@ -126,11 +126,11 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
       std::string title;
       if (fg_on) {
         title = std::format(
-            "Spider-Man: Web of Shadows | {}: {:.1f} FG FPS (Native: {:.1f} FPS, {:.1f} ms) | CPU: {:.1f}% [F4: FG]",
-            upscaler_tag, fg_fps, fps, ft_ms, cpu_pct);
+            "Spider-Man: Web of Shadows | {}: {:.1f} FPS (2x Paced: {:.1f} Hz, {:.1f} ms) | CPU: {:.1f}% [F4: 2x Pacer]",
+            upscaler_tag, fps, fg_fps, ft_ms, cpu_pct);
       } else {
         title = std::format(
-            "Spider-Man: Web of Shadows | {}: {:.1f} FPS ({:.1f} ms) | CPU: {:.1f}% [F4: FG]",
+            "Spider-Man: Web of Shadows | {}: {:.1f} FPS ({:.1f} ms) | CPU: {:.1f}% [F4: 2x Pacer]",
             upscaler_tag, fps, ft_ms, cpu_pct);
       }
 
@@ -142,8 +142,8 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
 
       if (++log_counter >= 5) {
         log_counter = 0;
-        REXLOG_INFO("[WoS-PERF] Telemetry: FG_FPS: {:.1f} | Native_FPS: {:.1f} ({:.1f} ms) | CPU: {:.1f}% | Upscaler: {}",
-                    fg_fps, fps, ft_ms, cpu_pct, upscaler_tag);
+        REXLOG_INFO("[WoS-PERF] Telemetry: Render_FPS: {:.1f} | Display_Hz (2x Paced): {:.1f} ({:.1f} ms) | CPU: {:.1f}% | Upscaler: {}",
+                    fps, fg_fps, ft_ms, cpu_pct, upscaler_tag);
 
         if (stat_samples > 0) {
           std::ofstream sf("last_session_stats.json", std::ios::trunc);

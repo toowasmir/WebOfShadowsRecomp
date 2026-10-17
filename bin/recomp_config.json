@@ -9,7 +9,7 @@
     "vrr_tearing": false,
     "letterbox": true,
     "dither": true,
-    "present_effect": "fsr3",
+    "present_effect": "fsr",
     "fsr_quality_mode": "quality",
     "fsr_sharpness": 0.2,
     "cas_sharpness": 0.5,

@@ -97,7 +97,7 @@ DEFAULT_CONFIG = {
     "vrr_tearing": True,
     "letterbox": True,
     "dither": True,
-    "present_effect": "fsr3",
+    "present_effect": "fsr",
     "fsr_quality_mode": "quality",
     "fsr_sharpness": 0.2,
     "cas_sharpness": 0.5,
@@ -135,7 +135,7 @@ STRINGS = {
         "nav": [
             ("🏠", "Genel"),
             ("🖥", "Ekran"),
-            ("⚡", "FSR & FG"),
+            ("⚡", "FSR & Pacer"),
             ("🎮", "Kontrol"),
             ("💿", "Dosyalar"),
             ("📊", "Analiz"),
@@ -143,8 +143,8 @@ STRINGS = {
         "ready": "● OYUN HAZIR",
         "missing": "● KURULUM GEREKLİ",
         "sec_overview": "AKTİF MOTOR & OPTİMİZASYON MERKEZİ",
-        "fg_title": "AMD FSR 3 + 2x Frame Generation",
-        "fg_desc": "Oyun içinde [F4] ile 2x FrameGen anlık açılıp kapatılabilir.",
+        "fg_title": "Dahili 2x Kare Çiftleme & AMD FSR",
+        "fg_desc": "Oyun içinde [F4] ile 2x Frame Pacer anlık açılıp kapatılabilir.",
         "occ_title": "Manhattan Donanımsal Occlusion Culling",
         "occ_desc": "Ağ atarken (Web-Swinging) binaların arkasındaki objeleri gizler.",
         "alpha_title": "Hızlı ROV Alfa & Parçacık Optimizasyonu",
@@ -164,7 +164,7 @@ STRINGS = {
         "sec_fsr": "AMD FIDELITYFX & VRAM ÖNBELLEK YÖNETİMİ",
         "upscaler_lbl": "Yükseltme & Keskinleştirme Motoru",
         "fsr_q_lbl": "AMD FSR Kalite Modu",
-        "pacer_lbl": "Kare Hızı Sabitleyici & 2x FrameGen Hedefi",
+        "pacer_lbl": "Kare Hızı Sabitleyici & 2x Yenileme Hedefi",
         "vram_lbl": "Ekran Kartı VRAM Önbellek Profili ve Render Ölçeği",
         "sec_ctrl": "FARE KAMERA & TUŞ ATAMALARI",
         "mouse_title": "Fare (Mouse) ile Kamera Kontrolü",
@@ -188,7 +188,7 @@ STRINGS = {
         "nav": [
             ("🏠", "General"),
             ("🖥", "Display"),
-            ("⚡", "FSR & FG"),
+            ("⚡", "FSR & Pacer"),
             ("🎮", "Controls"),
             ("💿", "Files"),
             ("📊", "Stats"),
@@ -196,8 +196,8 @@ STRINGS = {
         "ready": "● GAME READY",
         "missing": "● SETUP REQUIRED",
         "sec_overview": "ACTIVE ENGINE & OPTIMIZATION HUB",
-        "fg_title": "AMD FSR 3 + 2x Frame Generation",
-        "fg_desc": "Press [F4] in-game at any time to toggle 2x FrameGen live.",
+        "fg_title": "Built-in 2x Frame Pacer & AMD FSR",
+        "fg_desc": "Press [F4] in-game at any time to toggle 2x Frame Pacer live.",
         "occ_title": "Manhattan Hardware Occlusion Culling",
         "occ_desc": "Culls hidden city blocks behind skyscrapers while web-swinging.",
         "alpha_title": "Fast ROV Alpha & Particle Optimization",
@@ -211,13 +211,13 @@ STRINGS = {
         "fs_title": "Launch in Fullscreen Mode",
         "fs_desc": "When disabled, the game runs in standard windowed mode.",
         "vsync_title": "V-Sync (Vertical Synchronization)",
-        "vsync_desc": "Prevents screen tearing (Recommended OFF with FrameGen).",
+        "vsync_desc": "Prevents screen tearing (Recommended OFF with Frame Pacer).",
         "vrr_title": "D3D12 Variable Refresh Rate (G-Sync / FreeSync)",
         "vrr_desc": "Enables low-latency variable refresh presentation.",
         "sec_fsr": "AMD FIDELITYFX & VRAM CACHE MANAGEMENT",
         "upscaler_lbl": "Upscaling & Sharpening Engine",
         "fsr_q_lbl": "AMD FSR Quality Mode",
-        "pacer_lbl": "Frame Rate Pacer & 2x FrameGen Target",
+        "pacer_lbl": "Frame Rate Pacer & 2x Cadence Target",
         "vram_lbl": "GPU VRAM Cache Profile & Internal Render Scale",
         "sec_ctrl": "MOUSE CAMERA & KEYBINDINGS",
         "mouse_title": "Mouse Camera Look",
@@ -548,8 +548,8 @@ class ModernWoSLauncherV25:
             fill=GREEN_OK if ready else "#f39c12",
             anchor="nw",
         )
-        eff_up = self.config.get("present_effect", "fsr3").upper()
-        fg_tag = "2x FrameGen AÇIK" if self.config.get("frame_generation", True) else "FrameGen KAPALI"
+        eff_up = self.config.get("present_effect", "fsr").upper()
+        fg_tag = "2x Pacer AÇIK" if self.config.get("frame_generation", True) else "Pacer KAPALI"
         sub_line = self.status_msg if self.status_msg else f"AMD {eff_up}  •  {fg_tag}  •  {self.config.get('resolution', '1920x1080')}"
         self.canvas.create_text(128, 602, text=sub_line, font=("Segoe UI", 8), fill=TEXT_MUTED, anchor="nw")
 
@@ -597,7 +597,7 @@ class ModernWoSLauncherV25:
 
         # Quick live summary badges at bottom of General tab
         badges = [
-            f"⚡ UPSCALER: AMD {self.config.get('present_effect', 'fsr3').upper()}",
+            f"⚡ UPSCALER: AMD {self.config.get('present_effect', 'fsr').upper()}",
             f"💾 VRAM: {vram.upper()}",
             f"🎯 HEDEF: {self.config.get('frame_limit', 60) or 'MAX'} FPS",
         ]
@@ -646,9 +646,9 @@ class ModernWoSLauncherV25:
         self.canvas.create_text(126, 142, text=s["sec_fsr"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
 
         self.canvas.create_text(126, 172, text=s["upscaler_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
-        eff = self.config.get("present_effect", "fsr3")
-        for i, (code, lbl) in enumerate([("fsr3", "AMD FSR 3"), ("fsr2", "AMD FSR 2"), ("fsr", "AMD FSR 1"), ("cas", "AMD CAS"), ("bilinear", "Bilinear")]):
-            self.draw_pill(126 + i * 95, 196, 88, 34, lbl, eff == code, lambda c=code: self.set_cfg("present_effect", c))
+        eff = self.config.get("present_effect", "fsr")
+        for i, (code, lbl) in enumerate([("fsr", "AMD FSR (FidelityFX)"), ("cas", "AMD CAS (Sharpness)"), ("bilinear", "Bilinear (Off)")]):
+            self.draw_pill(126 + i * 160, 196, 150, 34, lbl, eff == code, lambda c=code: self.set_cfg("present_effect", c))
 
         self.canvas.create_text(126, 246, text=s["fsr_q_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
         qm = self.config.get("fsr_quality_mode", "quality")
@@ -662,7 +662,7 @@ class ModernWoSLauncherV25:
 
         self.canvas.create_text(126, 320, text=s["pacer_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
         fl = int(self.config.get("frame_limit", 60))
-        for i, (v, lbl) in enumerate([(30, "30 → 60 FG"), (40, "40 → 80 FG"), (60, "60 → 120 FG"), (0, "Sınırsız" if self.lang == "tr" else "Unlimited")]):
+        for i, (v, lbl) in enumerate([(30, "30 → 60 Hz"), (40, "40 → 80 Hz"), (60, "60 → 120 Hz"), (0, "Sınırsız" if self.lang == "tr" else "Unlimited")]):
             self.draw_pill(126 + i * 119, 344, 111, 34, lbl, fl == v, lambda val=v: self.set_cfg("frame_limit", val))
 
         self.canvas.create_text(126, 394, text=s["vram_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
@@ -790,16 +790,16 @@ class ModernWoSLauncherV25:
         peak_fps = stats_data.get("peak_fg_fps", 72.0)
         ft_ms = stats_data.get("last_frametime_ms", 16.6)
         cpu_pct = stats_data.get("last_cpu_pct", 42.0)
-        up = stats_data.get("upscaler", self.config.get("present_effect", "fsr3").upper())
+        up = stats_data.get("upscaler", self.config.get("present_effect", "fsr").upper())
 
         # Hero Metric Card
         self.canvas.create_rectangle(126, 168, 594, 248, fill=CARD_FILL, outline=t["accent"])
-        self.canvas.create_text(146, 180, text=f"{fg_fps} FG FPS", font=("Segoe UI", 24, "bold"), fill=GREEN_OK, anchor="nw")
-        self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} FPS   •   Native: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(146, 180, text=f"{fg_fps} Hz (2x Paced)" if self.config.get("frame_generation", True) else f"{nat_fps} FPS", font=("Segoe UI", 24, "bold"), fill=GREEN_OK, anchor="nw")
+        self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} Hz   •   Render: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         rows = [
             ("Aktif AMD FidelityFX Motoru", f"AMD {up} ({self.config.get('fsr_quality_mode', 'quality').upper()})"),
-            ("Dahili 2x Frame Generation", "AÇIK (2x QPC Pacer)" if self.config.get("frame_generation", True) else "KAPALI"),
+            ("Dahili 2x Frame Pacer", "AÇIK (2x Cadence Doubler)" if self.config.get("frame_generation", True) else "KAPALI"),
             ("İşlemci (CPU) Kullanımı", f"%{cpu_pct}  (AVX2 + FMA3 + FTZ/DAZ)"),
             ("VRAM Önbellek Profili", f"{self.config.get('vram_profile', '4gb').upper()}  (ROV + Occlusion Culling)"),
         ]
@@ -840,7 +840,7 @@ class ModernWoSLauncherV25:
         if preset == "laptop":
             self.config.update({
                 "resolution": "1920x1080",
-                "present_effect": "fsr3",
+                "present_effect": "fsr",
                 "fsr_quality_mode": "quality",
                 "frame_generation": True,
                 "frame_limit": 60,
@@ -853,7 +853,7 @@ class ModernWoSLauncherV25:
         elif preset == "balanced":
             self.config.update({
                 "resolution": "1920x1080",
-                "present_effect": "fsr3",
+                "present_effect": "fsr",
                 "fsr_quality_mode": "nativeaa",
                 "frame_generation": True,
                 "frame_limit": 60,
@@ -866,7 +866,7 @@ class ModernWoSLauncherV25:
         elif preset == "ultra":
             self.config.update({
                 "resolution": "2560x1440",
-                "present_effect": "fsr3",
+                "present_effect": "fsr",
                 "fsr_quality_mode": "nativeaa",
                 "frame_generation": True,
                 "frame_limit": 0,

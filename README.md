@@ -27,7 +27,7 @@
 
 ## Overview
 
-**WebOfShadowsRecomp** translates the original Xbox 360 PowerPC executable (`default.xex`, Title ID `41560815`) ahead of time into native C++ and compiles it to 64-bit `x86-64` machine code using the **ReXGlue SDK**. Because the game's code runs directly on your CPU with **AVX2 + FMA3** vector instructions rather than inside a dynamic interpreter/JIT emulator, it eliminates emulation overhead while adding modern PC features such as **Direct3D 12** rendering, built-in **AMD FidelityFX Super Resolution (FSR 3 / FSR 2 / FSR 1 / CAS)**, **2x Frame Generation**, hardware **Occlusion Culling**, and a standalone **Modern Dual-Suit Launcher (`WoS_Launcher.exe`)**.
+**WebOfShadowsRecomp** translates the original Xbox 360 PowerPC executable (`default.xex`, Title ID `41560815`) ahead of time into native C++ and compiles it to 64-bit `x86-64` machine code using the **ReXGlue SDK**. Because the game's code runs directly on your CPU with **AVX2 + FMA3** vector instructions rather than inside a dynamic interpreter/JIT emulator, it eliminates emulation overhead while adding modern PC features such as **Direct3D 12** rendering, built-in **AMD FidelityFX™ Super Resolution (FSR + RCAS & CAS Sharpening)**, a **Built-in 2x Frame Pacer (Cadence Doubler)**, hardware **Occlusion Culling**, and a standalone **Modern Dual-Suit Launcher (`WoS_Launcher.exe`)**.
 
 > [!IMPORTANT]
 > **WebOfShadowsRecomp** only offers official downloads via [GitHub Releases](https://github.com/toowasmir/WebOfShadowsRecomp/releases). Any third-party website claiming to host this project is unaffiliated.
@@ -39,6 +39,7 @@
 - [System Requirements](#system-requirements)
 - [How to Install](#how-to-install)
 - [Configuration & Hardware Presets](#configuration--hardware-presets)
+- [Optical Flow Frame Generation (Lossless Scaling / AFMF 2)](#optical-flow-frame-generation-lossless-scaling--afmf-2)
 - [Controls (Controller, Keyboard & Mouse)](#controls)
 - [Building from Source](#building-from-source)
 - [Project Layout](#project-layout)
@@ -56,7 +57,7 @@
 | :--- | :--- |
 | **Native x86-64 Engine** | Statically recompiled from the Xbox 360 PowerPC binary (`18,622+` functions) into native 64-bit C++ compiled with `clang-cl` (`-O3 -march=haswell -mavx2 -mfma`). |
 | **AVX2 + FMA3 & Zero-Stall MXCSR** | PowerPC VMX128 physics, animation skinning, and vector dot-products map directly to hardware `vfmadd213sd`, `vsqrtsd`, and `pshufb` (`_mm_shuffle_epi8`). Redundant per-function `LDMXCSR` (`SetFlushMode`) pipeline stalls (`66,421` call sites) are completely eliminated via persistent per-thread FTZ/DAZ initialization. |
-| **Built-in AMD FidelityFX & 2x Frame Generation** | Integrated directly into the D3D12 presenter (`src/hooks/frame_generation.h`) — **no external tools like Lossless Scaling required**. Choose **AMD FSR 3**, **FSR 2**, **FSR 1**, or **CAS** sharpening, and toggle **2x Frame Generation** live in-game at any time with **`F4`**. |
+| **Built-in AMD FidelityFX & 2x Frame Pacer** | Integrated directly into the D3D12 presenter (`src/hooks/frame_generation.h`). Features **AMD FidelityFX™ FSR + RCAS** and **CAS** sharpening, paired with a high-precision 2x Frame Pacer that doubles display presentation cadence (60/120 Hz) to eliminate judder. Toggle live with **`F4`**. |
 | **Smart VRAM Cache & Manhattan Occlusion Culling** | Hardware D3D12 occlusion queries cull hidden geometry behind Manhattan skyscrapers during high-speed web-swinging, paired with **4 GB**, **6 GB**, and **8+ GB** VRAM texture cache profiles to prevent VRAM thrashing on 4 GB GPUs. |
 | **Fast ROV Alpha & Particle Optimization** | Optimized early-alpha discard thresholds (`fuzzy_alpha_epsilon`) reduce pixel shader stalls during heavy explosions, smoke, and symbiote tendril effects. |
 | **Standalone Modern Launcher (`WoS_Launcher.exe`)** | Per-Monitor High-DPI frosted-glass launcher with **Red Suit / Symbiote Suit** live theme switching, **English / Turkish** UI localization, **One-Click Hardware Presets**, **Xbox 360 `.ISO` Extractor & Verifier**, **Save Game Backup/Restore Manager**, and **Telemetry Analytics**. |
@@ -92,9 +93,19 @@
 
 All settings are managed visually through **`WoS_Launcher.exe`** and saved automatically to `recomp_config.json` (and synced to `bin/recomp_config.json` and `wos_settings.toml` on launch):
 
-- **Performance (4 GB):** Tailored for 4 GB VRAM GPUs and laptops. Sets 1x internal render scale (`1280x720`) upscaled to `1080p` via **AMD FSR 3 (Quality)** + **2x Frame Generation** + aggressive VRAM cache eviction.
-- **Balanced (1080p):** Native `1080p` output with **AMD FSR 3**, **8 GB VRAM** cache profile, hardware occlusion culling, and 60 FPS frame pacing.
-- **Ultra Quality (2K):** Enables **2x Internal Resolution Scale (`2560x1440` supersampling)** with **AMD FSR 3 (Quality)** and **8+ GB VRAM** cache limits for razor-sharp webbing and suit textures.
+- **Performance (4 GB):** Tailored for 4 GB VRAM GPUs and laptops. Sets 1x internal render scale (`1280x720`) upscaled to `1080p` via **AMD FSR (Quality)** + **2x Frame Pacer** + aggressive VRAM cache eviction.
+- **Balanced (1080p):** Native `1080p` output with **AMD FSR**, **8 GB VRAM** cache profile, hardware occlusion culling, and 60 FPS frame pacing.
+- **Ultra Quality (2K):** Enables **2x Internal Resolution Scale (`2560x1440` supersampling)** with **AMD FSR (Quality)** and **8+ GB VRAM** cache limits for razor-sharp webbing and suit textures.
+
+## Optical Flow Frame Generation (Lossless Scaling / AFMF 2)
+
+Because *Spider-Man: Web of Shadows* was originally developed for the Xbox 360 in 2008, the game engine does not produce modern 3D motion vectors or camera depth buffers required for proprietary AI interpolation libraries (such as AMD FSR 3.1 Frame Gen or DLSS 3).
+
+Instead, this recomp features a built-in **High-Precision Direct3D 12 2x Frame Pacer** (`src/hooks/frame_generation.h`) that doubles display presentation cadence to 60/120 Hz to smooth out frame pacing and eliminate judder.
+
+For players seeking **true AI-generated optical flow intermediate frames**:
+- **Lossless Scaling (LSFG 2.3+):** Available on Steam. Works seamlessly in borderless/windowed mode to double or triple your FPS with zero physics impact.
+- **AMD Fluid Motion Frames 2 (AFMF 2):** Built into the AMD Adrenalin software driver for Radeon RX 6000/7000 GPUs.
 
 ## Controls
 
@@ -115,7 +126,7 @@ Both **XInput / SDL Controllers** and **Keyboard & Mouse** work simultaneously. 
 | **Center Camera** | `V` | Right Stick Click (`R3`) |
 | **Upgrade / Map Menu** | `Tab` | `Start` |
 | **Pause Menu** | `Escape` | `Back` |
-| **Toggle 2x Frame Generation (Live)** | **`F4`** *(In-Game Hotkey)* | — |
+| **Toggle 2x Frame Pacer (Live)** | **`F4`** *(In-Game Hotkey)* | — |
 
 ## Building from Source
 
@@ -136,7 +147,7 @@ To modify the engine hooks (`src/hooks/`) or rebuild `wos_recomp.exe` from sourc
 
 ## Reporting a Problem & Crash Logs
 
-Every time the game is launched via **`WoS_Launcher.exe`** or **`Play_WoS.bat`**, the engine automatically records a full diagnostic log (including Direct3D 12 initialization, CVAR states, AMD FSR 3 / FrameGen telemetry, and our built-in Vectored Exception Handler `[WoS-CRASH]` stack trace in case of an access violation) into the **`logs/`** directory:
+Every time the game is launched via **`WoS_Launcher.exe`** or **`Play_WoS.bat`**, the engine automatically records a full diagnostic log (including Direct3D 12 initialization, CVAR states, AMD FSR / 2x Frame Pacer telemetry, and our built-in Vectored Exception Handler `[WoS-CRASH]` stack trace in case of an access violation) into the **`logs/`** directory:
 
 - **Latest Session Log:** `logs/wos_recomp_latest.log`
 - **Previous Sessions (Up to 10 kept automatically):** `logs/wos_session_YYYYMMDD_HHMMSS.log`
@@ -165,7 +176,7 @@ WebOfShadowsRecomp/
 ├── patches/                  # Zero-stall MXCSR & AVX2/SSSE3 intrinsic patches
 ├── src/
 │   ├── main.cpp              # Engine entry point, config loader & D3D12 CVAR bridge
-│   ├── hooks/                # AMD FSR 3 + 2x FrameGen, hash hooks & perf hooks
+│   ├── hooks/                # AMD FSR + 2x Frame Pacer, hash hooks & perf hooks
 │   └── stubs/                # Kernel & unregistered function stubs
 └── tools/
     └── extract-xiso.exe      # Built-in Xbox 360 ISO extraction utility
