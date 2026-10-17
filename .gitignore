@@ -21,7 +21,10 @@ game/streams/
 # Kişisel Kayıt Dosyaları ve Oturum Logları
 saves_backup/*.zip
 last_session_stats.json
+logs/*.log
+logs/*.zip
 *.log
+!logs/README.md
 
 # Geçici Derleme ve Paketleme Klasörleri
 out/

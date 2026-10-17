@@ -260,6 +260,7 @@ class ModernWoSLauncherV25:
         self._drag_x = 0
         self._drag_y = 0
 
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self.load_assets()
         try:
             ico_path = ASSETS_DIR / "wos_icon.ico"
@@ -1010,18 +1011,10 @@ class ModernWoSLauncherV25:
         env = os.environ.copy()
         env["WOS_AUTOSKIP"] = "0"
         env["WOS_CAPTURE_TEST"] = "0"
-        log_fh = open(latest_log, "w", encoding="utf-8", buffering=1)
-        log_fh.write(f"=== Spider-Man: Web of Shadows Recompiled — Session Log ({stamp}) ===\n")
-        log_fh.write(f"Executable: {exe}\n")
-        log_fh.write(f"Config: {json.dumps(self.config, ensure_ascii=False)}\n")
-        log_fh.write("=" * 72 + "\n\n")
-        log_fh.flush()
         subprocess.Popen(
-            [str(exe)],
+            [str(exe), f"--log_file={str(latest_log)}"],
             cwd=str(exe.parent),
             env=env,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
         )
         self.root.destroy()
 
