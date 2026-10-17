@@ -1,0 +1,31 @@
+# =============================================================================
+# TELİFLİ OYUN DOSYALARI (ASLA GITHUB'A YÜKLENMEMELİDİR)
+# =============================================================================
+game/*.xex
+game/*.pak
+game/*.bik
+game/*.str
+game/*.dat
+game/*.cab
+game/*.bin
+game/image/
+game/movies/
+game/packs/
+game/sounds/
+game/streams/
+*.iso
+*.xex
+*.pak
+*.bik
+
+# Kişisel Kayıt Dosyaları ve Oturum Logları
+saves_backup/*.zip
+last_session_stats.json
+*.log
+
+# Geçici Derleme ve Paketleme Klasörleri
+out/
+build_pyi/
+__pycache__/
+*.spec
+dist_github_release/

@@ -1,0 +1,15 @@
+Spider-Man: Web of Shadows (Xbox 360 Title ID: 41560815)
+========================================================
+[EN]
+For legal reasons, no copyrighted Xbox 360 game assets (default.xex, .pak, .bik) are included in this package.
+To install:
+1. Run 'WoS_Launcher.exe' in the main directory.
+2. Open the 'Files' tab on the left navigation rail.
+3. Click 'Install from .ISO' and select your own legally acquired Xbox 360 .ISO image (or copy your extracted 'default.xex' and game files directly into this 'game/' folder).
+
+[TR]
+Telif haklari nedeniyle oyun varlik dosyalari (default.xex, .pak, .bik) bu pakete dahil edilmemistir.
+Kurulum icin:
+1. Ana klasordeki 'WoS_Launcher.exe' dosyasini calistirin.
+2. Sol menuden 'Dosyalar' sekmesine gecin.
+3. '.ISO Dosyasindan Kur' butonuna tiklayip kendi Xbox 360 .ISO dosyanizi secin.
