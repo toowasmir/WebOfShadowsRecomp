@@ -1,6 +1,6 @@
 > [!IMPORTANT]
 > **This project does not include any copyrighted game assets (`default.xex`, `.iso`, `.pak`, `.bik`).**
-> You must provide the files from your own legally acquired Xbox 360 copy of *Spider-Man: Web of Shadows* USA (`Title ID: 41560815`) to install and play **WebOfShadowsRecomp**.
+> You must provide the files from your own legally acquired Xbox 360 copy of *Spider-Man: Web of Shadows* (`Title ID: 41560815`) to install and play **WebOfShadowsRecomp**.
 
 <div align="center">
 

@@ -1028,26 +1028,56 @@ class ModernWoSLauncherV25:
                     latest_log.replace(prev_dest)
             except Exception:
                 pass
+        # Clean environment: strip any PyInstaller temporary directory from PATH and environment
+        # so wos_recomp.exe never inherits or locks _MEIPASS
         env = os.environ.copy()
         env["WOS_AUTOSKIP"] = "0"
         env["WOS_CAPTURE_TEST"] = "0"
+        env.pop("_MEIPASS", None)
+        env.pop("_MEIPASS2", None)
+        mei_dir = getattr(sys, "_MEIPASS", "")
+        if mei_dir and "PATH" in env:
+            env["PATH"] = os.pathsep.join(
+                [p for p in env["PATH"].split(os.pathsep) if p and (mei_dir not in p and "_MEI" not in p)]
+            )
+
         # Determine relative path from exe.parent to latest_log (immune to path spaces & non-ASCII folder names)
         try:
             rel_log = os.path.relpath(latest_log, exe.parent)
         except Exception:
             rel_log = str(latest_log)
+
         creationflags = 0
         if sys.platform == "win32":
             creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-        subprocess.Popen(
+
+        proc = subprocess.Popen(
             [str(exe), f"--log_file={rel_log}"],
             cwd=str(exe.parent),
             env=env,
             creationflags=creationflags,
             close_fds=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        self.root.destroy()
-        sys.exit(0)
+
+        # Hide launcher while the game is running to completely prevent PyInstaller _MEI cleanup races.
+        # When the game terminates, automatically restore the launcher on the Stats/Log tab!
+        self.root.withdraw()
+
+        def check_game_process():
+            if proc.poll() is not None:
+                try:
+                    self.root.deiconify()
+                    self.switch_tab(5)  # Switch to Stats & Diagnostic log tab
+                    self.render()
+                except Exception:
+                    sys.exit(0)
+            else:
+                self.root.after(1000, check_game_process)
+
+        self.root.after(1000, check_game_process)
 
 
 if __name__ == "__main__":
