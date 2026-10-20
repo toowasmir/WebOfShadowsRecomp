@@ -5,7 +5,8 @@
   "resolution_scale": 1,
   "present_effect": "bilinear",
   "vram_profile": "4gb",
-  "occlusion_query_enable": false,
+  "occlusion_query_enable": true,
+  "fuzzy_alpha_epsilon": true,
   "anisotropic_override": 0,
   "mnk_mouse": true
 }

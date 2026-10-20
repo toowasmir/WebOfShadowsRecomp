@@ -12,6 +12,7 @@
 #include "stubs/unregistered_func_handler.h"
 #include "hooks/indirect_call_hooks.h"
 #include "hooks/perf_monitor.h"
+#include "hooks/diagnostic_sentinel.h"
 
 #include <chrono>
 #include <fstream>
@@ -104,11 +105,14 @@ class AutoSkipDriver final : public rex::input::InputDriver {
 };
 
   void OnPreSetup(rex::RuntimeConfig& config) override {
+    wos::diag::ProbeHardwareAndEnvironment();
+    wos::diag::InstallCrashSentinel();
+    atexit([] { wos::diag::WriteDiagnosticSummaryFiles(false); });
     if (config.gpu_plugin.empty()) {
       config.gpu_plugin = "xenos";
     }
     HMODULE gpu_mod = LoadLibraryA("rexgpu-xenos.dll");
-    // Allow ReXGlue to auto-detect ROV vs FBO (e.g. FBO for AMD Polaris RX 480/580/Vega)
+    bool rov_set = rex::cvar::SetFlagByName("render_target_path_d3d12", "rov");
     bool fetch_set = rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
     bool d3d12_rb_set = rex::cvar::SetFlagByName("d3d12_readback_resolve", "false");
     bool rb_set = rex::cvar::SetFlagByName("readback_resolve", "none");
@@ -142,15 +146,11 @@ class AutoSkipDriver final : public rex::input::InputDriver {
       }
     }
 
-    // 1. Hardware Occlusion Queries - DISABLED for Manhattan City Skyline & Camera Panning:
-    // In D3D12 emulation of Xenos, querying GPU depth samples for Manhattan's hundreds of skyscrapers
-    // causes severe synchronous CPU-GPU readback pipeline stalls when looking towards dense buildings.
-    // Setting occlusion_query_enable = false returns query_occlusion_fake_sample_count (1000) instantly
-    // with zero GPU stalls, completely eliminating the camera panning FPS drop.
-    rex::cvar::SetFlagByName("occlusion_query_enable", "false");
-    rex::cvar::SetFlagByName("query_occlusion_fake_sample_count", "1000");
+    // 1. Hardware Occlusion Queries - ENABLED for Manhattan City Culling:
+    // Allows the engine to cull hidden city blocks, props, and NPCs behind skyscrapers.
+    rex::cvar::SetFlagByName("occlusion_query_enable", "true");
 
-    // 2. Keep Vertex Shader execution on the GPU (do not burn CPU cores with software VS emulation):
+    // 2. Keep Vertex Shader execution on the GPU (do not burden the 4-core CPU with scissored VS emulation):
     rex::cvar::SetFlagByName("execute_unclipped_draw_vs_on_cpu", "false");
     rex::cvar::SetFlagByName("execute_unclipped_draw_vs_on_cpu_with_scissor", "false");
 
@@ -170,13 +170,12 @@ class AutoSkipDriver final : public rex::input::InputDriver {
     // 7. Reduce texture fetch bandwidth on GTX 1650 Ti (disable forced 8x anisotropic override):
     rex::cvar::SetFlagByName("anisotropic_override", "0");
 
-    // 8. Expanded VRAM texture cache for 4GB GPU (GTX 1650 Ti):
-    // 1536MB soft / 2304MB hard with 45s soft lifetime completely eliminates PCIe texture eviction &
-    // re-upload thrashing during high-speed web swinging across Manhattan sectors:
-    rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "1536");
-    rex::cvar::SetFlagByName("texture_cache_memory_limit_hard", "2304");
-    rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "128");
-    rex::cvar::SetFlagByName("texture_cache_memory_limit_soft_lifetime", "45");
+    // 8. Optimized VRAM texture cache for 4GB GPU:
+    // Prevents VRAM exhaustion and PCIe paging spikes during Manhattan web-swinging traversal:
+    rex::cvar::SetFlagByName("texture_cache_memory_limit_soft", "768");
+    rex::cvar::SetFlagByName("texture_cache_memory_limit_hard", "1280");
+    rex::cvar::SetFlagByName("texture_cache_memory_limit_render_to_texture", "64");
+    rex::cvar::SetFlagByName("texture_cache_memory_limit_soft_lifetime", "15");
 
     // 9. High D3D12 command queue scheduling priority and async pipeline creation:
     rex::cvar::SetFlagByName("d3d12_queue_priority", "2");
@@ -187,25 +186,6 @@ class AutoSkipDriver final : public rex::input::InputDriver {
     // Built-in 2x Frame Generation, Resolution, Fullscreen, V-Sync, VRAM Profile, and Keybindings:
     wos::fg::ApplyConfigToCvars();
 
-    static bool veh_installed = false;
-    if (!veh_installed) {
-      veh_installed = true;
-      AddVectoredExceptionHandler(1, [](PEXCEPTION_POINTERS p) -> LONG {
-        if (p->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-          uintptr_t fault_addr = p->ExceptionRecord->ExceptionInformation[1];
-          void* rip = (void*)p->ContextRecord->Rip;
-          HMODULE hMod = NULL;
-          GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                             (LPCSTR)rip, &hMod);
-          char modName[MAX_PATH] = {0};
-          if (hMod) GetModuleFileNameA(hMod, modName, MAX_PATH);
-          uintptr_t rva = hMod ? ((uintptr_t)rip - (uintptr_t)hMod) : 0;
-          REXLOG_ERROR("[WoS-CRASH] ACCESS VIOLATION at RIP={:p} (mod='{}', RVA=0x{:X}), faulting addr={:p}",
-                       rip, modName, rva, (void*)fault_addr);
-        }
-        return EXCEPTION_CONTINUE_SEARCH;
-      });
-    }
 
     REXLOG_INFO("[WoS] OnPreSetup: gpu_mod={}, d3d12_rb={}, rb_set={}, clr={}",
                 (void*)gpu_mod, d3d12_rb_set, rb_set, clr_set);
@@ -223,17 +203,12 @@ class AutoSkipDriver final : public rex::input::InputDriver {
 
   void OnPostSetup() override {
     REXLOG_INFO("[WoS] OnPostSetup: Runtime and subsystems ready");
+    wos::diag::LogEffectiveEngineState();
     for (const auto& flag : rex::cvar::ListFlags()) {
       const auto* info = rex::cvar::GetFlagInfo(flag);
       if (info) {
-        std::string extra;
-        if (info->constraints.HasAllowedValues()) {
-          extra = " [allowed: ";
-          for (const auto& a : info->constraints.allowed_values) { extra += a; extra += " "; }
-          extra += "]";
-        }
-        REXLOG_INFO("[WoS-CVAR] {} = '{}' (cat: {}, default: '{}'){}",
-                    flag, info->getter ? info->getter() : "", info->category, info->default_value, extra);
+        REXLOG_INFO("[WoS-CVAR] {} = '{}' (cat: {}, default: '{}')",
+                    flag, info->getter ? info->getter() : "", info->category, info->default_value);
       }
     }
     auto* input = dynamic_cast<rex::input::InputSystem*>(runtime()->input_system());

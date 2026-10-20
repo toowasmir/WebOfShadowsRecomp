@@ -25,7 +25,7 @@ from tkinter import messagebox, filedialog
 # Single-Instance Enforcement to prevent duplicate processes & PyInstaller _MEI collisions
 ERROR_ALREADY_EXISTS = 183
 try:
-    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v201")
+    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v202")
     if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
         hwnd = ctypes.windll.user32.FindWindowW(None, "Spider-Man: Web of Shadows — ReComp Modern Edition")
         if hwnd:
@@ -37,7 +37,7 @@ except Exception:
 
 # Enable Per-Monitor High-DPI awareness and Taskbar Icon ID on Windows
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v201")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v202")
 except Exception:
     pass
 try:
@@ -513,7 +513,7 @@ class ModernWoSLauncherV25:
 
         # 4. Top Header Glass Bar (x=108..612, y=18..112)
         self.canvas.create_image(124, 28, image=self.img_logo, anchor="nw")
-        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.1", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.3", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
         self.canvas.create_text(260, 84, text="•  WIN64 AVX2 + D3D12", font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         # Top-Right inside Header Bar: Language Flags & Suit Theme Toggle
@@ -791,6 +791,16 @@ class ModernWoSLauncherV25:
                 except Exception:
                     pass
 
+        diag_data = {}
+        for c in [LOGS_DIR / "diagnostic_summary.json", BASE_DIR / "bin" / "logs" / "diagnostic_summary.json", BASE_DIR.parent / "logs" / "diagnostic_summary.json"]:
+            if c.exists():
+                try:
+                    with open(c, "r", encoding="utf-8") as f:
+                        diag_data = json.load(f)
+                    break
+                except Exception:
+                    pass
+
         fg_fps = stats_data.get("avg_fg_fps", 60.0)
         nat_fps = stats_data.get("avg_native_fps", 30.0)
         peak_fps = stats_data.get("peak_fg_fps", 72.0)
@@ -803,11 +813,19 @@ class ModernWoSLauncherV25:
         self.canvas.create_text(146, 180, text=f"{fg_fps} Hz (2x Paced)" if self.config.get("frame_generation", True) else f"{nat_fps} FPS", font=("Segoe UI", -28, "bold"), fill=GREEN_OK, anchor="nw")
         self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} Hz   •   Render: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
 
+        gpu_name = diag_data.get("gpu_name", "")
+        vram = diag_data.get("dedicated_vram_mb", 0)
+        rov_ok = diag_data.get("rov_supported", True)
+        stutters = diag_data.get("stutter_spikes_count", 0)
+        ram_peak = diag_data.get("peak_ram_mb", "0.0")
+
         rows = [
             ("Aktif AMD FidelityFX Motoru", f"AMD {up} ({self.config.get('fsr_quality_mode', 'quality').upper()})"),
             ("Dahili 2x Frame Pacer", "AÇIK (2x Cadence Doubler)" if self.config.get("frame_generation", True) else "KAPALI"),
-            ("İşlemci (CPU) Kullanımı", f"%{cpu_pct}  (AVX2 + FMA3 + FTZ/DAZ)"),
-            ("VRAM Önbellek Profili", f"{self.config.get('vram_profile', '4gb').upper()}  (ROV + Occlusion Culling)"),
+            ("Donanım & ROV Desteği" if gpu_name else "İşlemci (CPU) Kullanımı",
+             f"{gpu_name[:24]} ({'ROV ✔' if rov_ok else 'NO ROV ❌'})" if gpu_name else f"%{cpu_pct}  (AVX2 + FMA3)"),
+            ("RAM & Takılma (Spike)" if gpu_name else "VRAM Önbellek Profili",
+             f"RAM: {ram_peak} MB  |  Spike: {stutters}" if gpu_name else f"{self.config.get('vram_profile', '4gb').upper()}  (ROV + Occlusion Culling)"),
         ]
         for i, (k, v) in enumerate(rows):
             y = 260 + i * 42
@@ -819,17 +837,34 @@ class ModernWoSLauncherV25:
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         latest_log = LOGS_DIR / "wos_recomp_latest.log"
         log_logs = sorted(LOGS_DIR.glob("wos_session_*.log"), reverse=True)
-        if latest_log.exists():
+        diag_status = diag_data.get("status", "HEALTHY")
+        diag_cause = diag_data.get("root_cause", "")
+
+        if diag_status == "CRASHED":
+            log_status = f"❌ Son Oturum Çöktü: {diag_cause[:42]}..."
+            card_border = "#e74c3c"
+            status_color = "#e74c3c"
+        elif diag_status == "WARNING_NO_ROV":
+            log_status = "⚠ Ekran kartı donanımsal ROV desteklemiyor (Siyah ekran riski)!"
+            card_border = "#f39c12"
+            status_color = "#f39c12"
+        elif latest_log.exists():
             kb = round(latest_log.stat().st_size / 1024, 1)
-            log_status = f"✔ Otomatik Log Aktif: logs/wos_recomp_latest.log ({kb} KB)"
+            log_status = f"✔ Otomatik Log & Teşhis Aktif: wos_recomp_latest.log ({kb} KB)"
+            card_border = BORDER_SUBTLE
+            status_color = GREEN_OK
         elif log_logs:
             kb = round(log_logs[0].stat().st_size / 1024, 1)
             log_status = f"✔ Son Oturum Logu: {log_logs[0].name} ({kb} KB)"
+            card_border = BORDER_SUBTLE
+            status_color = TEXT_MUTED
         else:
             log_status = "ℹ Oyun başlatıldığında tüm motor/çökme kayıtları 'logs/' klasörüne yazılır."
+            card_border = BORDER_SUBTLE
+            status_color = TEXT_MUTED
 
-        self.canvas.create_rectangle(126, 434, 594, 532, fill=CARD_FILL, outline=BORDER_SUBTLE)
-        self.canvas.create_text(142, 448, text=log_status, font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_rectangle(126, 434, 594, 532, fill=CARD_FILL, outline=card_border)
+        self.canvas.create_text(142, 448, text=log_status, font=("Segoe UI", -11, "bold"), fill=status_color, anchor="nw")
         self.draw_pill(142, 478, 128, 38, s["btn_open_log"], False, self.open_latest_log)
         self.draw_pill(278, 478, 174, 38, s["btn_export_diag"], True, self.export_bug_report)
         self.draw_pill(460, 478, 118, 38, s["btn_logs_folder"], False, lambda: os.startfile(str(LOGS_DIR)))
@@ -979,12 +1014,21 @@ class ModernWoSLauncherV25:
                 if st_cand.exists():
                     zf.write(st_cand, arcname="last_session_stats.json")
                     break
+            for dg_cand in [LOGS_DIR / "diagnostic_summary.json", BASE_DIR / "bin" / "logs" / "diagnostic_summary.json", BASE_DIR.parent / "logs" / "diagnostic_summary.json"]:
+                if dg_cand.exists():
+                    zf.write(dg_cand, arcname="logs/diagnostic_summary.json")
+                    break
             all_logs = sorted(LOGS_DIR.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
             bin_logs_dir = BASE_DIR / "bin" / "logs"
             if bin_logs_dir.exists():
                 all_logs.extend(sorted(bin_logs_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True))
             for lf in all_logs[:5]:
                 zf.write(lf, arcname=f"logs/{lf.name}")
+            all_dumps = sorted(LOGS_DIR.glob("*.dmp"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if bin_logs_dir.exists():
+                all_dumps.extend(sorted(bin_logs_dir.glob("*.dmp"), key=lambda p: p.stat().st_mtime, reverse=True))
+            for df in all_dumps[:3]:
+                zf.write(df, arcname=f"logs/{df.name}")
             # Include basic OS/CPU/GPU diagnostic summary
             sys_info = [
                 f"Timestamp: {datetime.now().isoformat()}",

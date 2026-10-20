@@ -78,7 +78,7 @@
 ## How to Install
 
 1. **Acquire your legal Xbox 360 game copy** of *Spider-Man: Web of Shadows* (`Title ID: 41560815`) as an `.ISO` disc image or an extracted folder containing `default.xex`.
-2. Download `WoS_ReComp_Modern_Edition_v2.0.1_Win64.zip` from the [Latest Release](https://github.com/toowasmir/WebOfShadowsRecomp/releases/latest) page and extract it to any folder on your PC.
+2. Download `WoS_ReComp_Modern_Edition_v2.0.3_Win64.zip` from the [Latest Release](https://github.com/toowasmir/WebOfShadowsRecomp/releases/latest) page and extract it to any folder on your PC.
 3. Run **`WoS_Launcher.exe`** (standalone executable — no Python installation required).
    - *Tip: Switch the launcher language between **English (🇬🇧)** and **Turkish (🇹🇷)** using the flag icons in the top header bar.*
 4. Open the **💿 Files** tab in the left navigation rail:
@@ -147,15 +147,17 @@ To modify the engine hooks (`src/hooks/`) or rebuild `wos_recomp.exe` from sourc
 
 ## Reporting a Problem & Crash Logs
 
-Every time the game is launched via **`WoS_Launcher.exe`** or **`Play_WoS.bat`**, the engine automatically records a full diagnostic log (including Direct3D 12 initialization, CVAR states, AMD FSR / 2x Frame Pacer telemetry, and our built-in Vectored Exception Handler `[WoS-CRASH]` stack trace in case of an access violation) into the **`logs/`** directory:
+Every time the game is launched via **`WoS_Launcher.exe`** or **`Play_WoS.bat`**, the built-in **Omniscient Diagnostic Sentinel** automatically probes your system, verifies GPU Direct3D 12 ROV hardware capabilities, tracks RAM footprint and stutter spikes, and writes structured telemetry to **`logs/`**:
 
 - **Latest Session Log:** `logs/wos_recomp_latest.log`
+- **Diagnostic Health Summary (JSON):** `logs/diagnostic_summary.json`
+- **Automated Crash Minidump (.DMP):** `logs/wos_crash_YYYYMMDD_HHMMSS.dmp` (Generated automatically on fatal access violations or memory errors)
 - **Previous Sessions (Up to 10 kept automatically):** `logs/wos_session_YYYYMMDD_HHMMSS.log`
 
 **How to attach logs to a GitHub Issue:**
 1. Open **`WoS_Launcher.exe`** and click the **📊 Stats (`Analiz`)** tab on the left navigation rail.
 2. Click **📦 Export Bug Report (`.ZIP`)** (`Hata Raporu (.ZIP) Oluştur`).
-3. This creates `logs/WoS_BugReport_<timestamp>.zip` containing your latest logs, `recomp_config.json`, and `last_session_stats.json` (with zero personal/save data), which you can drag and drop directly into a [GitHub Issue](https://github.com/toowasmir/WebOfShadowsRecomp/issues).
+3. This generates `logs/WoS_BugReport_<timestamp>.zip` containing your latest logs, `diagnostic_summary.json`, `last_session_stats.json`, and any crash minidumps (`.dmp`) with zero personal data, ready to drag-and-drop into a [GitHub Issue](https://github.com/toowasmir/WebOfShadowsRecomp/issues).
 
 ## Project Layout
 

@@ -56,7 +56,6 @@ struct ModernConfig {
   int anisotropic_override = 0;                  // 0, 1, 2, 3, 4, 5 (0=off, 1=1x, 2=2x, 3=4x, 4=8x, 5=16x)
   bool occlusion_query_enable = true;
   bool fuzzy_alpha_epsilon = true;
-  std::string d3d12_render_target_path = "auto"; // auto, rov, fbo
 
   // Controls & Keybindings
   bool mnk_mouse = true;
@@ -207,7 +206,6 @@ inline bool LoadConfigFromDisk() {
   detail::ExtractInt(json, "anisotropic_override", g_config.anisotropic_override);
   detail::ExtractBool(json, "occlusion_query_enable", g_config.occlusion_query_enable);
   detail::ExtractBool(json, "fuzzy_alpha_epsilon", g_config.fuzzy_alpha_epsilon);
-  detail::ExtractString(json, "d3d12_render_target_path", g_config.d3d12_render_target_path);
 
   detail::ExtractBool(json, "mnk_mouse", g_config.mnk_mouse);
   detail::ExtractDouble(json, "mnk_sensitivity", g_config.mnk_sensitivity);
@@ -262,15 +260,6 @@ inline void ApplyConfigToCvars() {
   rex::cvar::SetFlagByName("anisotropic_override", std::to_string(std::clamp(g_config.anisotropic_override, 0, 5)));
   rex::cvar::SetFlagByName("occlusion_query_enable", g_config.occlusion_query_enable ? "true" : "false");
   rex::cvar::SetFlagByName("use_fuzzy_alpha_epsilon", g_config.fuzzy_alpha_epsilon ? "true" : "false");
-
-  if (g_config.d3d12_render_target_path == "rov") {
-    rex::cvar::SetFlagByName("render_target_path_d3d12", "rov");
-  } else if (g_config.d3d12_render_target_path == "fbo") {
-    rex::cvar::SetFlagByName("render_target_path_d3d12", "fbo");
-  } else {
-    // "auto": Let ReXGlue auto-detect hardware capabilities (rov on NVIDIA/RDNA, fbo on AMD Polaris RX 480/580/Vega)
-    rex::cvar::SetFlagByName("render_target_path_d3d12", "");
-  }
 
   // 4. VRAM Profile
   if (g_config.vram_profile == "12gb") {
