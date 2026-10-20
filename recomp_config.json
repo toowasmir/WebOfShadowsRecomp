@@ -4,5 +4,8 @@
   "vsync": false,
   "resolution_scale": 1,
   "present_effect": "bilinear",
+  "vram_profile": "4gb",
+  "occlusion_query_enable": false,
+  "anisotropic_override": 0,
   "mnk_mouse": true
 }
