@@ -108,7 +108,8 @@ class AutoSkipDriver final : public rex::input::InputDriver {
       config.gpu_plugin = "xenos";
     }
     HMODULE gpu_mod = LoadLibraryA("rexgpu-xenos.dll");
-    bool rov_set = rex::cvar::SetFlagByName("render_target_path_d3d12", "rov");
+    // Do not force "rov" unconditionally - allow ReXGlue to auto-detect hardware capabilities
+    // (uses "rov" on NVIDIA/RDNA, falls back to "fbo" on AMD Polaris RX 480/580/Vega):
     bool fetch_set = rex::cvar::SetFlagByName("gpu_allow_invalid_fetch_constants", "true");
     bool d3d12_rb_set = rex::cvar::SetFlagByName("d3d12_readback_resolve", "false");
     bool rb_set = rex::cvar::SetFlagByName("readback_resolve", "none");

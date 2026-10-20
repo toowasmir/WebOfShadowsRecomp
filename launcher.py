@@ -110,6 +110,7 @@ DEFAULT_CONFIG = {
     "anisotropic_override": 0,
     "occlusion_query_enable": True,
     "fuzzy_alpha_epsilon": True,
+    "d3d12_render_target_path": "auto",
     "mnk_mouse": True,
     "mnk_sensitivity": 1.0,
     "keybind_a": "Space",
