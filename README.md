@@ -78,7 +78,7 @@
 ## How to Install
 
 1. **Acquire your legal Xbox 360 game copy** of *Spider-Man: Web of Shadows* (`Title ID: 41560815`) as an `.ISO` disc image or an extracted folder containing `default.xex`.
-2. Download `WoS_ReComp_Modern_Edition_v2.0_Win64.zip` from the [Latest Release](https://github.com/toowasmir/WebOfShadowsRecomp/releases/latest) page and extract it to any folder on your PC.
+2. Download `WoS_ReComp_Modern_Edition_v2.0.1_Win64.zip` from the [Latest Release](https://github.com/toowasmir/WebOfShadowsRecomp/releases/latest) page and extract it to any folder on your PC.
 3. Run **`WoS_Launcher.exe`** (standalone executable — no Python installation required).
    - *Tip: Switch the launcher language between **English (🇬🇧)** and **Turkish (🇹🇷)** using the flag icons in the top header bar.*
 4. Open the **💿 Files** tab in the left navigation rail:

@@ -25,7 +25,7 @@ from tkinter import messagebox, filedialog
 # Single-Instance Enforcement to prevent duplicate processes & PyInstaller _MEI collisions
 ERROR_ALREADY_EXISTS = 183
 try:
-    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v25")
+    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v201")
     if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
         hwnd = ctypes.windll.user32.FindWindowW(None, "Spider-Man: Web of Shadows — ReComp Modern Edition")
         if hwnd:
@@ -37,16 +37,16 @@ except Exception:
 
 # Enable Per-Monitor High-DPI awareness and Taskbar Icon ID on Windows
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v25")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v201")
 except Exception:
     pass
 try:
-    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    # Use DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED (-5) on Windows 10 1703+ / Windows 11.
+    # Windows scales the 1120x660 canvas proportionally without inflating font metrics
+    # or causing text/button overlaps on 4K displays (150% / 200%).
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-5))
 except Exception:
-    try:
-        ctypes.windll.user32.SetProcessDPIAware()
-    except Exception:
-        pass
+    pass
 
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).resolve().parent
@@ -247,6 +247,11 @@ class ModernWoSLauncherV25:
 
     def __init__(self, root: tk.Tk):
         self.root = root
+        try:
+            # Lock baseline Tk scaling to 96 DPI (96/72 = 1.333333)
+            self.root.tk.call("tk", "scaling", 1.3333333333333333)
+        except Exception:
+            pass
         self.root.title("Spider-Man: Web of Shadows — ReComp Modern Edition")
         self.root.configure(bg=BG_DARK)
         self.root.resizable(False, False)
@@ -422,14 +427,14 @@ class ModernWoSLauncherV25:
         t_id = self.canvas.create_text(
             x1 + 16, y + 12,
             text=title,
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", -13, "bold"),
             fill=TEXT_WHITE,
             anchor="nw",
         )
         s_id = self.canvas.create_text(
             x1 + 16, y + 34,
             text=subtitle,
-            font=("Segoe UI", 8),
+            font=("Segoe UI", -11),
             fill=TEXT_MUTED,
             anchor="nw",
         )
@@ -453,7 +458,7 @@ class ModernWoSLauncherV25:
         l = self.canvas.create_text(
             x + w // 2, y + h // 2,
             text=text,
-            font=("Segoe UI", 9, "bold" if active else "normal"),
+            font=("Segoe UI", -12, "bold" if active else "normal"),
             fill=txt_c,
         )
         for item in (r, l):
@@ -475,8 +480,8 @@ class ModernWoSLauncherV25:
         self.canvas.create_rectangle(0, 0, self.W - 1, self.H - 1, outline="#1c202e", width=1)
 
         # 2. Top-Right Window Controls (— and X) + Suit Switcher Pill
-        min_btn = self.canvas.create_text(1062, 28, text="—", font=("Segoe UI", 10, "bold"), fill=TEXT_MUTED)
-        cls_btn = self.canvas.create_text(1092, 28, text="X", font=("Segoe UI", 10, "bold"), fill=TEXT_MUTED)
+        min_btn = self.canvas.create_text(1062, 28, text="—", font=("Segoe UI", -14, "bold"), fill=TEXT_MUTED)
+        cls_btn = self.canvas.create_text(1092, 28, text="X", font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED)
         self.canvas.tag_bind(min_btn, "<Enter>", lambda e: (self.canvas.itemconfig(min_btn, fill=TEXT_WHITE), self.canvas.config(cursor="hand2")))
         self.canvas.tag_bind(min_btn, "<Leave>", lambda e: (self.canvas.itemconfig(min_btn, fill=TEXT_MUTED), self.canvas.config(cursor="")))
         self.canvas.tag_bind(min_btn, "<Button-1>", lambda e: self.minimize_window())
@@ -499,8 +504,8 @@ class ModernWoSLauncherV25:
             nbox = self.canvas.create_rectangle(26, ny, 86, ny + 58, fill=box_fill, outline=box_out, width=1)
             if is_act:
                 self.canvas.create_rectangle(18, ny + 10, 22, ny + 48, fill=t["accent"], outline="")
-            nico = self.canvas.create_text(56, ny + 20, text=icon_str, font=("Segoe UI Emoji", 13), fill=TEXT_WHITE if is_act else TEXT_MUTED)
-            ntxt = self.canvas.create_text(56, ny + 44, text=nav_lbl, font=("Segoe UI", 8, "bold" if is_act else "normal"), fill=TEXT_WHITE if is_act else TEXT_MUTED)
+            nico = self.canvas.create_text(56, ny + 20, text=icon_str, font=("Segoe UI Emoji", -16), fill=TEXT_WHITE if is_act else TEXT_MUTED)
+            ntxt = self.canvas.create_text(56, ny + 44, text=nav_lbl, font=("Segoe UI", -11, "bold" if is_act else "normal"), fill=TEXT_WHITE if is_act else TEXT_MUTED)
             for item in (nbox, nico, ntxt):
                 self.canvas.tag_bind(item, "<Button-1>", lambda e, i=idx: self.switch_tab(i))
                 self.canvas.tag_bind(item, "<Enter>", lambda e, b=nbox: (self.canvas.itemconfig(b, outline=t["accent_bright"]), self.canvas.config(cursor="hand2")))
@@ -508,8 +513,8 @@ class ModernWoSLauncherV25:
 
         # 4. Top Header Glass Bar (x=108..612, y=18..112)
         self.canvas.create_image(124, 28, image=self.img_logo, anchor="nw")
-        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.5", font=("Segoe UI", 8, "bold"), fill=t["accent_bright"], anchor="nw")
-        self.canvas.create_text(248, 84, text="•  WIN64 AVX2 + D3D12 ROV", font=("Segoe UI", 8, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.1", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(260, 84, text="•  WIN64 AVX2 + D3D12", font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         # Top-Right inside Header Bar: Language Flags & Suit Theme Toggle
         if self.lang == "tr":
@@ -545,14 +550,14 @@ class ModernWoSLauncherV25:
         self.canvas.create_text(
             128, 578,
             text=s["ready"] if ready else s["missing"],
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", -13, "bold"),
             fill=GREEN_OK if ready else "#f39c12",
             anchor="nw",
         )
         eff_up = self.config.get("present_effect", "fsr").upper()
         fg_tag = "2x Pacer AÇIK" if self.config.get("frame_generation", True) else "Pacer KAPALI"
         sub_line = self.status_msg if self.status_msg else f"AMD {eff_up}  •  {fg_tag}  •  {self.config.get('resolution', '1920x1080')}"
-        self.canvas.create_text(128, 602, text=sub_line, font=("Segoe UI", 8), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(128, 602, text=sub_line, font=("Segoe UI", -11), fill=TEXT_MUTED, anchor="nw")
 
         p_norm = self.play_btns[(self.lang, self.suit, False)]
         p_hov = self.play_btns[(self.lang, self.suit, True)]
@@ -565,7 +570,7 @@ class ModernWoSLauncherV25:
     # TAB 0: GENERAL
     # -------------------------------------------------------------------------
     def render_tab_general(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_overview"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_overview"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
 
         self.draw_toggle_card(
             170,
@@ -589,7 +594,7 @@ class ModernWoSLauncherV25:
             lambda: self.set_cfg("fuzzy_alpha_epsilon", not self.config.get("fuzzy_alpha_epsilon", True)),
         )
 
-        self.canvas.create_text(126, 396, text=s["preset_hdr"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 396, text=s["preset_hdr"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         vram = self.config.get("vram_profile", "4gb")
         sc = int(self.config.get("resolution_scale", 1))
         self.draw_pill(126, 422, 162, 40, s["p_laptop"], vram == "4gb" and sc == 1, lambda: self.apply_preset("laptop"))
@@ -605,14 +610,14 @@ class ModernWoSLauncherV25:
         for i, btxt in enumerate(badges):
             bx = 126 + i * 160
             self.canvas.create_rectangle(bx, 482, bx + 148, 518, fill="#0c0e15", outline="#1d2230")
-            self.canvas.create_text(bx + 74, 500, text=btxt, font=("Segoe UI", 8, "bold"), fill=TEXT_MUTED)
+            self.canvas.create_text(bx + 74, 500, text=btxt, font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED)
 
     # -------------------------------------------------------------------------
     # TAB 1: DISPLAY
     # -------------------------------------------------------------------------
     def render_tab_display(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_display"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
-        self.canvas.create_text(126, 170, text=s["res_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_display"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 170, text=s["res_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         cur_res = self.config.get("resolution", "1920x1080")
         for i, r in enumerate(["1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160"]):
@@ -644,14 +649,14 @@ class ModernWoSLauncherV25:
     # TAB 2: AMD FSR & VRAM
     # -------------------------------------------------------------------------
     def render_tab_fsr(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_fsr"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_fsr"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
 
-        self.canvas.create_text(126, 172, text=s["upscaler_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 172, text=s["upscaler_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         eff = self.config.get("present_effect", "fsr")
         for i, (code, lbl) in enumerate([("fsr", "AMD FSR (FidelityFX)"), ("cas", "AMD CAS (Sharpness)"), ("bilinear", "Bilinear (Off)")]):
             self.draw_pill(126 + i * 160, 196, 150, 34, lbl, eff == code, lambda c=code: self.set_cfg("present_effect", c))
 
-        self.canvas.create_text(126, 246, text=s["fsr_q_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 246, text=s["fsr_q_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         qm = self.config.get("fsr_quality_mode", "quality")
         for i, (code, lbl) in enumerate([
             ("nativeaa", "Native AA"),
@@ -661,12 +666,12 @@ class ModernWoSLauncherV25:
         ]):
             self.draw_pill(126 + i * 119, 270, 111, 34, lbl, qm == code, lambda c=code: self.set_cfg("fsr_quality_mode", c))
 
-        self.canvas.create_text(126, 320, text=s["pacer_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 320, text=s["pacer_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         fl = int(self.config.get("frame_limit", 60))
         for i, (v, lbl) in enumerate([(30, "30 → 60 Hz"), (40, "40 → 80 Hz"), (60, "60 → 120 Hz"), (0, "Sınırsız" if self.lang == "tr" else "Unlimited")]):
             self.draw_pill(126 + i * 119, 344, 111, 34, lbl, fl == v, lambda val=v: self.set_cfg("frame_limit", val))
 
-        self.canvas.create_text(126, 394, text=s["vram_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 394, text=s["vram_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         vram = self.config.get("vram_profile", "4gb")
         for i, (code, lbl) in enumerate([("4gb", "4 GB VRAM"), ("8gb", "8 GB VRAM"), ("12gb", "12+ GB VRAM")]):
             self.draw_pill(126 + i * 159, 418, 150, 34, lbl, vram == code, lambda c=code: self.set_cfg("vram_profile", c))
@@ -682,7 +687,7 @@ class ModernWoSLauncherV25:
     # TAB 3: CONTROLS
     # -------------------------------------------------------------------------
     def render_tab_controls(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_ctrl"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_ctrl"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
 
         self.draw_toggle_card(
             168,
@@ -692,12 +697,12 @@ class ModernWoSLauncherV25:
             lambda: self.set_cfg("mnk_mouse", not self.config.get("mnk_mouse", True)),
         )
 
-        self.canvas.create_text(126, 242, text=s["sens_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 242, text=s["sens_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         sens = round(float(self.config.get("mnk_sensitivity", 1.0)), 1)
         for i, sv in enumerate([0.6, 1.0, 1.4, 2.0, 3.0]):
             self.draw_pill(126 + i * 95, 264, 88, 30, f"{sv:.1f}x", abs(sens - sv) < 0.08, lambda v=sv: self.set_cfg("mnk_sensitivity", v))
 
-        self.canvas.create_text(126, 306, text=s["keys_lbl"], font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(126, 306, text=s["keys_lbl"], font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
         keys = [
             ("keybind_right_trigger", "🕸 Ağ Atma (RT)"),
             ("keybind_left_trigger", "🎯 Duvar/Hedef (LT)"),
@@ -746,25 +751,25 @@ class ModernWoSLauncherV25:
     # TAB 4: FILES & ISO WIZARD
     # -------------------------------------------------------------------------
     def render_tab_files(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_files"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_files"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
 
         # Card 1: ISO Installer
         self.canvas.create_rectangle(126, 174, 594, 320, fill=CARD_FILL, outline=BORDER_SUBTLE)
-        self.canvas.create_text(144, 190, text=s["iso_card_title"], font=("Segoe UI", 11, "bold"), fill=TEXT_WHITE, anchor="nw")
+        self.canvas.create_text(144, 190, text=s["iso_card_title"], font=("Segoe UI", -15, "bold"), fill=TEXT_WHITE, anchor="nw")
         gdir = self.find_game_dir()
         xex_ok = (gdir / "default.xex").exists()
         st = f"✔ default.xex doğrulandı ({gdir})" if xex_ok else "⚠ game/default.xex bulunamadı (Lütfen .ISO seçin)"
-        self.canvas.create_text(144, 218, text=st, font=("Segoe UI", 9, "bold"), fill=GREEN_OK if xex_ok else "#f39c12", anchor="nw")
+        self.canvas.create_text(144, 218, text=st, font=("Segoe UI", -12, "bold"), fill=GREEN_OK if xex_ok else "#f39c12", anchor="nw")
         self.draw_pill(144, 256, 210, 42, s["btn_iso"], True, self.install_from_iso)
         self.draw_pill(366, 256, 210, 42, s["btn_verify"], False, self.verify_files)
 
         # Card 2: Save Manager
         self.canvas.create_rectangle(126, 340, 594, 510, fill=CARD_FILL, outline=BORDER_SUBTLE)
-        self.canvas.create_text(144, 358, text=s["save_card_title"], font=("Segoe UI", 11, "bold"), fill=TEXT_WHITE, anchor="nw")
+        self.canvas.create_text(144, 358, text=s["save_card_title"], font=("Segoe UI", -15, "bold"), fill=TEXT_WHITE, anchor="nw")
         SAVES_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
         backups = sorted(SAVES_BACKUP_DIR.glob("WoS_Save_Backup_*.zip"), reverse=True)
         b_info = f"Son Yedek: {backups[0].name} ({len(backups)} adet kayıtlı yedek)" if backups else "Henüz kayıt yedeği oluşturulmadı."
-        self.canvas.create_text(144, 386, text=b_info, font=("Segoe UI", 9), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(144, 386, text=b_info, font=("Segoe UI", -12), fill=TEXT_MUTED, anchor="nw")
 
         self.draw_pill(144, 430, 140, 42, s["btn_backup"], True, self.backup_saves)
         self.draw_pill(294, 430, 140, 42, s["btn_restore"], False, self.restore_latest_save)
@@ -774,7 +779,7 @@ class ModernWoSLauncherV25:
     # TAB 5: TELEMETRY STATS
     # -------------------------------------------------------------------------
     def render_tab_stats(self, s, t):
-        self.canvas.create_text(126, 142, text=s["sec_perf"], font=("Segoe UI", 9, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 142, text=s["sec_perf"], font=("Segoe UI", -12, "bold"), fill=t["accent_bright"], anchor="nw")
 
         stats_data = {}
         for c in [STATS_FILE, BASE_DIR / "bin" / "last_session_stats.json", BASE_DIR.parent / "last_session_stats.json"]:
@@ -795,8 +800,8 @@ class ModernWoSLauncherV25:
 
         # Hero Metric Card
         self.canvas.create_rectangle(126, 168, 594, 248, fill=CARD_FILL, outline=t["accent"])
-        self.canvas.create_text(146, 180, text=f"{fg_fps} Hz (2x Paced)" if self.config.get("frame_generation", True) else f"{nat_fps} FPS", font=("Segoe UI", 24, "bold"), fill=GREEN_OK, anchor="nw")
-        self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} Hz   •   Render: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", 9, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(146, 180, text=f"{fg_fps} Hz (2x Paced)" if self.config.get("frame_generation", True) else f"{nat_fps} FPS", font=("Segoe UI", -28, "bold"), fill=GREEN_OK, anchor="nw")
+        self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} Hz   •   Render: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         rows = [
             ("Aktif AMD FidelityFX Motoru", f"AMD {up} ({self.config.get('fsr_quality_mode', 'quality').upper()})"),
@@ -807,8 +812,8 @@ class ModernWoSLauncherV25:
         for i, (k, v) in enumerate(rows):
             y = 260 + i * 42
             self.canvas.create_rectangle(126, y, 594, y + 36, fill=CARD_FILL, outline=BORDER_SUBTLE)
-            self.canvas.create_text(142, y + 18, text=k, font=("Segoe UI", 9), fill=TEXT_MUTED, anchor="w")
-            self.canvas.create_text(578, y + 18, text=v, font=("Segoe UI", 9, "bold"), fill=TEXT_WHITE, anchor="e")
+            self.canvas.create_text(142, y + 18, text=k, font=("Segoe UI", -12), fill=TEXT_MUTED, anchor="w")
+            self.canvas.create_text(578, y + 18, text=v, font=("Segoe UI", -12, "bold"), fill=TEXT_WHITE, anchor="e")
 
         # Crash & Session Log Diagnostic Card
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -824,7 +829,7 @@ class ModernWoSLauncherV25:
             log_status = "ℹ Oyun başlatıldığında tüm motor/çökme kayıtları 'logs/' klasörüne yazılır."
 
         self.canvas.create_rectangle(126, 434, 594, 532, fill=CARD_FILL, outline=BORDER_SUBTLE)
-        self.canvas.create_text(142, 448, text=log_status, font=("Segoe UI", 8, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_text(142, 448, text=log_status, font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
         self.draw_pill(142, 478, 128, 38, s["btn_open_log"], False, self.open_latest_log)
         self.draw_pill(278, 478, 174, 38, s["btn_export_diag"], True, self.export_bug_report)
         self.draw_pill(460, 478, 118, 38, s["btn_logs_folder"], False, lambda: os.startfile(str(LOGS_DIR)))
