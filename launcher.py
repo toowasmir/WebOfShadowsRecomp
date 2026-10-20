@@ -25,7 +25,7 @@ from tkinter import messagebox, filedialog
 # Single-Instance Enforcement to prevent duplicate processes & PyInstaller _MEI collisions
 ERROR_ALREADY_EXISTS = 183
 try:
-    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v201")
+    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v202")
     if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
         hwnd = ctypes.windll.user32.FindWindowW(None, "Spider-Man: Web of Shadows — ReComp Modern Edition")
         if hwnd:
@@ -37,7 +37,7 @@ except Exception:
 
 # Enable Per-Monitor High-DPI awareness and Taskbar Icon ID on Windows
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v201")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v202")
 except Exception:
     pass
 try:
@@ -513,7 +513,7 @@ class ModernWoSLauncherV25:
 
         # 4. Top Header Glass Bar (x=108..612, y=18..112)
         self.canvas.create_image(124, 28, image=self.img_logo, anchor="nw")
-        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.1", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
+        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.2", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
         self.canvas.create_text(260, 84, text="•  WIN64 AVX2 + D3D12", font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
 
         # Top-Right inside Header Bar: Language Flags & Suit Theme Toggle
