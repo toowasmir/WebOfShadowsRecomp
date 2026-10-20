@@ -12,6 +12,7 @@
 #include "stubs/unregistered_func_handler.h"
 #include "hooks/indirect_call_hooks.h"
 #include "hooks/perf_monitor.h"
+#include "hooks/diagnostic_sentinel.h"
 
 #include <chrono>
 #include <fstream>
@@ -104,6 +105,9 @@ class AutoSkipDriver final : public rex::input::InputDriver {
 };
 
   void OnPreSetup(rex::RuntimeConfig& config) override {
+    wos::diag::ProbeHardwareAndEnvironment();
+    wos::diag::InstallCrashSentinel();
+    atexit([] { wos::diag::WriteDiagnosticSummaryFiles(false); });
     if (config.gpu_plugin.empty()) {
       config.gpu_plugin = "xenos";
     }
@@ -182,25 +186,6 @@ class AutoSkipDriver final : public rex::input::InputDriver {
     // Built-in 2x Frame Generation, Resolution, Fullscreen, V-Sync, VRAM Profile, and Keybindings:
     wos::fg::ApplyConfigToCvars();
 
-    static bool veh_installed = false;
-    if (!veh_installed) {
-      veh_installed = true;
-      AddVectoredExceptionHandler(1, [](PEXCEPTION_POINTERS p) -> LONG {
-        if (p->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-          uintptr_t fault_addr = p->ExceptionRecord->ExceptionInformation[1];
-          void* rip = (void*)p->ContextRecord->Rip;
-          HMODULE hMod = NULL;
-          GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                             (LPCSTR)rip, &hMod);
-          char modName[MAX_PATH] = {0};
-          if (hMod) GetModuleFileNameA(hMod, modName, MAX_PATH);
-          uintptr_t rva = hMod ? ((uintptr_t)rip - (uintptr_t)hMod) : 0;
-          REXLOG_ERROR("[WoS-CRASH] ACCESS VIOLATION at RIP={:p} (mod='{}', RVA=0x{:X}), faulting addr={:p}",
-                       rip, modName, rva, (void*)fault_addr);
-        }
-        return EXCEPTION_CONTINUE_SEARCH;
-      });
-    }
 
     REXLOG_INFO("[WoS] OnPreSetup: gpu_mod={}, d3d12_rb={}, rb_set={}, clr={}",
                 (void*)gpu_mod, d3d12_rb_set, rb_set, clr_set);
@@ -218,6 +203,7 @@ class AutoSkipDriver final : public rex::input::InputDriver {
 
   void OnPostSetup() override {
     REXLOG_INFO("[WoS] OnPostSetup: Runtime and subsystems ready");
+    wos::diag::LogEffectiveEngineState();
     for (const auto& flag : rex::cvar::ListFlags()) {
       const auto* info = rex::cvar::GetFlagInfo(flag);
       if (info) {

@@ -19,6 +19,7 @@
 #include <rex/ui/window.h>
 
 #include "frame_generation.h"
+#include "diagnostic_sentinel.h"
 
 namespace wos::perf {
 
@@ -112,6 +113,7 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
       g_current_fg_fps.store(fg_fps, std::memory_order_relaxed);
       g_current_frametime_ms.store(ft_ms, std::memory_order_relaxed);
       g_current_cpu_pct.store(cpu_pct, std::memory_order_relaxed);
+      wos::diag::OnTelemetryTick(fps, ft_ms, cpu_pct);
 
       if (fps > 5.0) {
         sum_native_fps += fps;
@@ -142,6 +144,7 @@ inline void StartTelemetryThread(rex::ui::Window* window) {
 
       if (++log_counter >= 5) {
         log_counter = 0;
+        wos::diag::WriteDiagnosticSummaryFiles(false);
         REXLOG_INFO("[WoS-PERF] Telemetry: Render_FPS: {:.1f} | Display_Hz (2x Paced): {:.1f} ({:.1f} ms) | CPU: {:.1f}% | Upscaler: {}",
                     fps, fg_fps, ft_ms, cpu_pct, upscaler_tag);
 
