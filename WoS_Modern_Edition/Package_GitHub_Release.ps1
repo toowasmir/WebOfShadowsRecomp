@@ -3,8 +3,8 @@
 
 $ErrorActionPreference = "Stop"
 $BaseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ReleaseDir = Join-Path $BaseDir "dist_github_release\WoS_ReComp_Modern_v2.0.3"
-$ZipOut = Join-Path $BaseDir "dist_github_release\WoS_ReComp_Modern_Edition_v2.0.3_Win64.zip"
+$ReleaseDir = Join-Path $BaseDir "dist_github_release\WoS_ReComp_Modern_v2.0.4"
+$ZipOut = Join-Path $BaseDir "dist_github_release\WoS_ReComp_Modern_Edition_v2.0.4_Win64.zip"
 
 Write-Host "[1/4] GitHub Release klasoru hazirlaniyor..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null

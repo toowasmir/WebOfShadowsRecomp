@@ -17,17 +17,21 @@ import os
 import subprocess
 import sys
 import zipfile
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, filedialog
 
 # Single-Instance Enforcement to prevent duplicate processes & PyInstaller _MEI collisions
+APP_VERSION = "v2.0.4"
+WINDOW_TITLE = f"Spider-Man: Web of Shadows — ReComp Modern Edition {APP_VERSION}"
 ERROR_ALREADY_EXISTS = 183
 try:
-    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "WoS_ReComp_Launcher_SingleInstance_Mutex_v202")
+    _launcher_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, f"WoS_ReComp_Launcher_SingleInstance_Mutex_{APP_VERSION}")
     if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
-        hwnd = ctypes.windll.user32.FindWindowW(None, "Spider-Man: Web of Shadows — ReComp Modern Edition")
+        hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
         if hwnd:
             ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
             ctypes.windll.user32.SetForegroundWindow(hwnd)
@@ -37,7 +41,7 @@ except Exception:
 
 # Enable Per-Monitor High-DPI awareness and Taskbar Icon ID on Windows
 try:
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("WoS.ReComp.ModernEdition.Launcher.v202")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f"WoS.ReComp.ModernEdition.Launcher.{APP_VERSION}")
 except Exception:
     pass
 try:
@@ -120,14 +124,14 @@ DEFAULT_CONFIG = {
     "keybind_left_shoulder": "Q",
     "keybind_right_shoulder": "E",
     "keybind_left_trigger": "RMB",
-    "keybind_right_trigger": "LShift",
+    "keybind_right_trigger": "Shift",
     "keybind_start": "Tab",
     "keybind_back": "Escape",
     "keybind_lstick_up": "W",
     "keybind_lstick_down": "S",
     "keybind_lstick_left": "A",
     "keybind_lstick_right": "D",
-    "keybind_lstick_press": "LAlt",
+    "keybind_lstick_press": "Alt",
     "keybind_rstick_press": "V",
 }
 
@@ -252,7 +256,7 @@ class ModernWoSLauncherV25:
             self.root.tk.call("tk", "scaling", 1.3333333333333333)
         except Exception:
             pass
-        self.root.title("Spider-Man: Web of Shadows — ReComp Modern Edition")
+        self.root.title(WINDOW_TITLE)
         self.root.configure(bg=BG_DARK)
         self.root.resizable(False, False)
 
@@ -479,7 +483,10 @@ class ModernWoSLauncherV25:
         self.canvas.create_image(0, 0, image=bg_img, anchor="nw")
         self.canvas.create_rectangle(0, 0, self.W - 1, self.H - 1, outline="#1c202e", width=1)
 
-        # 2. Top-Right Window Controls (— and X) + Suit Switcher Pill
+        # 2. Top-Right Window Controls (— and X) + Prominent Version Badge
+        self.canvas.create_rectangle(946, 16, 1034, 40, fill="#10131d", outline=t["accent"], width=1)
+        self.canvas.create_text(990, 28, text=APP_VERSION, font=("Segoe UI", -11, "bold"), fill=TEXT_WHITE)
+
         min_btn = self.canvas.create_text(1062, 28, text="—", font=("Segoe UI", -14, "bold"), fill=TEXT_MUTED)
         cls_btn = self.canvas.create_text(1092, 28, text="X", font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED)
         self.canvas.tag_bind(min_btn, "<Enter>", lambda e: (self.canvas.itemconfig(min_btn, fill=TEXT_WHITE), self.canvas.config(cursor="hand2")))
@@ -513,8 +520,9 @@ class ModernWoSLauncherV25:
 
         # 4. Top Header Glass Bar (x=108..612, y=18..112)
         self.canvas.create_image(124, 28, image=self.img_logo, anchor="nw")
-        self.canvas.create_text(126, 84, text="RECOMP MODERN v2.0.3", font=("Segoe UI", -11, "bold"), fill=t["accent_bright"], anchor="nw")
-        self.canvas.create_text(260, 84, text="•  WIN64 AVX2 + D3D12", font=("Segoe UI", -11, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_rectangle(126, 80, 192, 102, fill="#121624", outline=t["accent"], width=1)
+        self.canvas.create_text(159, 91, text=APP_VERSION, font=("Segoe UI", -11, "bold"), fill=t["accent_bright"])
+        self.canvas.create_text(202, 91, text="RECOMP MODERN EDITION  •  AVX2 + D3D12", font=("Segoe UI", -10, "bold"), fill=TEXT_MUTED, anchor="w")
 
         # Top-Right inside Header Bar: Language Flags & Suit Theme Toggle
         if self.lang == "tr":
@@ -547,16 +555,18 @@ class ModernWoSLauncherV25:
 
         # 6. Bottom Launch Dock Glass Bar (x=108..612, y=560..642)
         ready = self.is_game_ready()
+        status_txt = f"{s['ready']}  [{APP_VERSION}]" if ready else f"{s['missing']}  [{APP_VERSION}]"
         self.canvas.create_text(
             128, 578,
-            text=s["ready"] if ready else s["missing"],
+            text=status_txt,
             font=("Segoe UI", -13, "bold"),
             fill=GREEN_OK if ready else "#f39c12",
             anchor="nw",
         )
         eff_up = self.config.get("present_effect", "fsr").upper()
         fg_tag = "2x Pacer AÇIK" if self.config.get("frame_generation", True) else "Pacer KAPALI"
-        sub_line = self.status_msg if self.status_msg else f"AMD {eff_up}  •  {fg_tag}  •  {self.config.get('resolution', '1920x1080')}"
+        prefix = "Sürüm: " if self.lang == "tr" else "Version: "
+        sub_line = self.status_msg if self.status_msg else f"{prefix}{APP_VERSION}  •  AMD {eff_up}  •  {fg_tag}  •  {self.config.get('resolution', '1920x1080')}"
         self.canvas.create_text(128, 602, text=sub_line, font=("Segoe UI", -11), fill=TEXT_MUTED, anchor="nw")
 
         p_norm = self.play_btns[(self.lang, self.suit, False)]
@@ -718,34 +728,93 @@ class ModernWoSLauncherV25:
             row = idx // 2
             bx = 126 + col * 238
             by = 330 + row * 48
-            val = "[Tuşa Basın]" if self.listening_key == kid else self.config.get(kid, DEFAULT_CONFIG[kid])
+            raw_val = self.config.get(kid, DEFAULT_CONFIG.get(kid, "None"))
+            friendly = {
+                "Mouse4": "Mouse 4 (Yan 1)" if self.lang == "tr" else "Mouse 4 (Side 1)",
+                "Mouse5": "Mouse 5 (Yan 2)" if self.lang == "tr" else "Mouse 5 (Side 2)",
+                "LMB": "LMB (Sol Tık)" if self.lang == "tr" else "LMB (Left Click)",
+                "RMB": "RMB (Sağ Tık)" if self.lang == "tr" else "RMB (Right Click)",
+                "MMB": "MMB (Orta Tık)" if self.lang == "tr" else "MMB (Middle Click)",
+            }
+            display_val = friendly.get(raw_val, raw_val)
+            val = ("[Tuşa / Fareye Basın]" if self.lang == "tr" else "[Press Key / Mouse]") if self.listening_key == kid else display_val
             self.draw_pill(bx, by, 230, 38, f"{klbl}:  {val}", self.listening_key == kid, lambda k=kid: self.start_key_listen(k))
 
+    def cleanup_key_listen(self):
+        self.listening_key = None
+        try:
+            self.root.unbind("<Key>")
+            self.root.unbind("<Button-1>")
+            self.root.unbind("<Button-2>")
+            self.root.unbind("<Button-3>")
+        except Exception:
+            pass
+        if hasattr(self, "_bind_mouse_id") and self._bind_mouse_id:
+            try:
+                self.root.after_cancel(self._bind_mouse_id)
+            except Exception:
+                pass
+            self._bind_mouse_id = None
+        if hasattr(self, "_side_poll_id") and self._side_poll_id:
+            try:
+                self.root.after_cancel(self._side_poll_id)
+            except Exception:
+                pass
+            self._side_poll_id = None
+
     def start_key_listen(self, key_id: str):
+        self.cleanup_key_listen()
         self.listening_key = key_id
         self.render()
+
+        def assign_key(val):
+            self.config[key_id] = val
+            self.cleanup_key_listen()
+            self.save_config()
+            self.render()
 
         def on_key(event):
             mapping = {
                 "space": "Space",
-                "Shift_L": "LShift",
-                "Shift_R": "RShift",
-                "Control_L": "LCtrl",
-                "Control_R": "RCtrl",
-                "Alt_L": "LAlt",
-                "Alt_R": "RAlt",
-                "Return": "Enter",
+                "Shift_L": "Shift",
+                "Shift_R": "Shift",
+                "Control_L": "Control",
+                "Control_R": "Control",
+                "Alt_L": "Alt",
+                "Alt_R": "Alt",
+                "Return": "Return",
                 "Tab": "Tab",
                 "Escape": "Escape",
             }
             ks = event.keysym
-            self.config[key_id] = mapping.get(ks, ks.upper() if len(ks) == 1 else ks)
-            self.listening_key = None
-            self.root.unbind("<Key>")
-            self.save_config()
-            self.render()
+            val = mapping.get(ks, ks.upper() if len(ks) == 1 else ks)
+            assign_key(val)
+
+        def poll_side_buttons():
+            if self.listening_key != key_id:
+                return
+            try:
+                u32 = ctypes.windll.user32
+                if u32.GetAsyncKeyState(0x05) & 0x8000:
+                    assign_key("Mouse4")
+                    return
+                if u32.GetAsyncKeyState(0x06) & 0x8000:
+                    assign_key("Mouse5")
+                    return
+            except Exception:
+                pass
+            self._side_poll_id = self.root.after(30, poll_side_buttons)
 
         self.root.bind("<Key>", on_key)
+
+        def bind_mouse():
+            if self.listening_key == key_id:
+                self.root.bind("<Button-1>", lambda e: assign_key("LMB"))
+                self.root.bind("<Button-2>", lambda e: assign_key("MMB"))
+                self.root.bind("<Button-3>", lambda e: assign_key("RMB"))
+                poll_side_buttons()
+
+        self._bind_mouse_id = self.root.after(150, bind_mouse)
 
     # -------------------------------------------------------------------------
     # TAB 4: FILES & ISO WIZARD
@@ -812,6 +881,8 @@ class ModernWoSLauncherV25:
         self.canvas.create_rectangle(126, 168, 594, 248, fill=CARD_FILL, outline=t["accent"])
         self.canvas.create_text(146, 180, text=f"{fg_fps} Hz (2x Paced)" if self.config.get("frame_generation", True) else f"{nat_fps} FPS", font=("Segoe UI", -28, "bold"), fill=GREEN_OK, anchor="nw")
         self.canvas.create_text(146, 220, text=f"Zirve (Peak): {peak_fps} Hz   •   Render: {nat_fps} FPS ({ft_ms} ms)", font=("Segoe UI", -12, "bold"), fill=TEXT_MUTED, anchor="nw")
+        self.canvas.create_rectangle(504, 178, 580, 204, fill="#121624", outline=t["accent"], width=1)
+        self.canvas.create_text(542, 191, text=APP_VERSION, font=("Segoe UI", -11, "bold"), fill=t["accent_bright"])
 
         gpu_name = diag_data.get("gpu_name", "")
         vram = diag_data.get("dedicated_vram_mb", 0)
@@ -1101,6 +1172,23 @@ class ModernWoSLauncherV25:
         if sys.platform == "win32":
             creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
 
+        # Map Mouse4/Mouse5 to internal virtual keys for wos_recomp engine
+        side_mappings = {}
+        game_cfg = self.config.copy()
+        for k, v in self.config.items():
+            if v == "Mouse4":
+                game_cfg[k] = "F13"
+                side_mappings[0x05] = 0x7C  # VK_XBUTTON1 -> VK_F13
+            elif v == "Mouse5":
+                game_cfg[k] = "F14"
+                side_mappings[0x06] = 0x7D  # VK_XBUTTON2 -> VK_F14
+
+        try:
+            with open(exe.parent / "recomp_config.json", "w", encoding="utf-8") as f:
+                json.dump(game_cfg, f, indent=2)
+        except Exception:
+            pass
+
         proc = subprocess.Popen(
             [str(exe), f"--log_file={rel_log}"],
             cwd=str(exe.parent),
@@ -1111,6 +1199,61 @@ class ModernWoSLauncherV25:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+        if side_mappings:
+            def side_button_forwarder():
+                from ctypes import wintypes
+                user32 = ctypes.windll.user32
+
+                class KEYBDINPUT(ctypes.Structure):
+                    _fields_ = [
+                        ('wVk', wintypes.WORD),
+                        ('wScan', wintypes.WORD),
+                        ('dwFlags', wintypes.DWORD),
+                        ('time', wintypes.DWORD),
+                        ('dwExtraInfo', ctypes.POINTER(ctypes.c_ulong))
+                    ]
+                class INPUT(ctypes.Structure):
+                    class _I(ctypes.Union):
+                        _fields_ = [('ki', KEYBDINPUT)]
+                    _anonymous_ = ('_i',)
+                    _fields_ = [('type', wintypes.DWORD), ('_i', _I)]
+
+                KEYEVENTF_KEYUP = 0x0002
+
+                def send_vk(vk, is_down):
+                    inp = INPUT()
+                    inp.type = 1
+                    inp.ki.wVk = vk
+                    inp.ki.wScan = 0
+                    inp.ki.dwFlags = 0 if is_down else KEYEVENTF_KEYUP
+                    inp.ki.time = 0
+                    inp.ki.dwExtraInfo = None
+                    user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+
+                btn_states = {0x05: False, 0x06: False}
+                while proc.poll() is None:
+                    try:
+                        fg = user32.GetForegroundWindow()
+                        pid = wintypes.DWORD()
+                        user32.GetWindowThreadProcessId(fg, ctypes.byref(pid))
+                        if pid.value == proc.pid:
+                            for m_vk, tgt_vk in side_mappings.items():
+                                down = bool(user32.GetAsyncKeyState(m_vk) & 0x8000)
+                                if down != btn_states[m_vk]:
+                                    btn_states[m_vk] = down
+                                    send_vk(tgt_vk, down)
+                        else:
+                            for m_vk, tgt_vk in side_mappings.items():
+                                if btn_states[m_vk]:
+                                    btn_states[m_vk] = False
+                                    send_vk(tgt_vk, False)
+                    except Exception:
+                        pass
+                    time.sleep(0.004)
+
+            t = threading.Thread(target=side_button_forwarder, daemon=True)
+            t.start()
 
         # Hide launcher while the game is running to completely prevent PyInstaller _MEI cleanup races.
         # When the game terminates, automatically restore the launcher on the Stats/Log tab!
